@@ -1,0 +1,68 @@
+# NASKAH DEMO SIDIK - KAMUS VARIASI SEMENTARA, BELUM DIVALIDASI terhadap Perkasad No. 36/2018.
+# Pasangan/kuartet kata di bawah adalah padanan leksikal umum, BUKAN variasi resmi Jukminu.
+# Tugas PM/ahli Jukminu: ganti dengan variasi yang sah menurut regulasi. Mesin tidak perlu diubah.
+#
+# Sintaks: {varian1|varian2} = 1 bit, {varian1|varian2|varian3|varian4} = 2 bit.
+# Aturan (diperiksa otomatis saat dimuat): tiap varian = satu kata, unik di seluruh naskah,
+# tidak muncul di teks tetap, dan tidak mirip kata lain.
+KOMANDO DAERAH MILITER JAYA/JAYAKARTA
+MARKAS KOMANDO
+SURAT TELEGRAM PANGLIMA KODAM JAYA
+NOMOR: ST/412/OPS-SIB/X/2026
+DERAJAT: KILAT
+KLASIFIKASI: RAHASIA
+DARI: PANGDAM JAYA
+KEPADA: PARA DANREM DAN DANDIM JAJARAN KODAM JAYA
+
+1. DASAR
+a. {Berdasarkan|Merujuk|Menindaklanjuti|Mengacu} surat keputusan Panglima TNI Nomor KEP/882/IX/2026 tentang gelar kekuatan KTT Internasional.
+b. {Pertimbangan|Telaahan} komando dan staf Kodam Jaya {mengenai|perihal} ancaman siber asimetris terhadap jaringan militer.
+c. {Hasil|Kesimpulan} rapat bersama staf intelijen {serta|beserta} staf operasi.
+
+2. SITUASI
+a. Ancaman siber terhadap {infrastruktur|prasarana} komunikasi militer {meningkat|bertambah} {selama|sepanjang} masa persiapan KTT Internasional.
+b. Aktor ancaman {diduga|disinyalir} melakukan {pengintaian|pemetaan} jaringan militer secara {terstruktur|sistematis}.
+c. Insiden kebocoran dokumen {mengakibatkan|mendatangkan} kerugian besar bagi {kehormatan|martabat} institusi.
+
+3. TUGAS
+a. Kodam Jaya {memberlakukan|menerapkan} penjagaan tingkat satu {guna|demi} {menjamin|memastikan} keselamatan jaringan komunikasi.
+b. Para Danrem dan Dandim {memerintahkan|menugaskan|menginstruksikan|mewajibkan} {seluruh|segenap} jajaran untuk {meningkatkan|mengintensifkan|memperkuat|memperketat} {kesiapan|kesiapsiagaan} {tiap|setiap} unsur tanggap insiden siber.
+c. {Satuan|Kesatuan} wajib {mengawasi|memantau|memonitor|mengamati} lalu lintas jaringan militer tanpa henti.
+d. Semua anomali jaringan harus {segera|secepatnya|sesegera|seketika} disampaikan kepada Puskodal Kodam Jaya.
+e. {Pelaksanaan|Penyelenggaraan} tugas ini {sesuai|selaras} dengan {ketentuan|peraturan} yang berlaku.
+
+4. TINDAKAN
+a. {Pengamanan|Pengawalan} dokumen rahasia {dilaksanakan|dijalankan} oleh {pimpinan|atasan} langsung {sebagai|selaku} penanggung jawab.
+b. Para pejabat {mencegah|menangkal|menghalau|mengantisipasi} penggunaan telepon genggam di ruang rapat {agar|supaya} tidak terjadi pemotretan.
+c. {Anggota|Personel} dilarang {menyebarkan|mendistribusikan|membagikan|menyalurkan} naskah ini kepada pihak yang tidak berwenang.
+d. Dokumen yang {dimaksud|dimaksudkan} disimpan di tempat yang {ditetapkan|diputuskan} oleh komandan.
+e. Perwira staf {menyusun|merumuskan|merancang|menyiapkan} rencana kontinjensi {kemudian|selanjutnya} {mengevaluasi|menilai|mengkaji|menakar} hasilnya.
+f. {Koordinasi|Sinkronisasi} antarsatuan {diharapkan|dimohon} berjalan {lengkap|utuh} dan {tepat|akurat}.
+
+5. LANGKAH
+a. Teknisi {memeriksa|meneliti|memverifikasi|menelaah} perangkat komunikasi sebelum pertemuan {resmi|formal}.
+b. Penjaga {mencatat|membukukan|mendata|menginventarisasi} semua akses ke ruang arsip.
+c. Komandan {mengamankan|melindungi|menjaga|mengawal} {perlengkapan|peralatan} sandi {khususnya|terutama} pada malam hari.
+d. {Laporan|Pemberitaan} dikirim melalui jalur komunikasi yang {singkat|ringkas} dan {jelas|gamblang}.
+e. Bintara {mengirimkan|menyampaikan|meneruskan|menyerahkan} bukti kejadian kepada pihak berwenang.
+
+6. LARANGAN
+a. Pelaku {pelanggaran|penyimpangan} dikenai {sanksi|hukuman} menurut undang-undang militer.
+b. Komandan {mengendalikan|mengontrol|mengelola|mengatur} {kegiatan|aktivitas} tersebut secara {menyeluruh|komprehensif} dan {berkelanjutan|kontinu}.
+c. Kompi {mendahulukan|memprioritaskan} {petunjuk|pedoman} komandan {apabila|jika} terjadi perbedaan penafsiran.
+d. Dokumen lama {dimusnahkan|dihancurkan} lewat prosedur khusus.
+e. Pihak yang {mengungkapkan|membeberkan|membocorkan|mempublikasikan} isi naskah akan diproses hukum.
+
+7. HAL LAIN
+a. {Perintah|Instruksi} ini {diterima|diperoleh} oleh {wilayah|kawasan} tertentu {pertama|awal} kali pagi hari.
+b. {Pegawai|Karyawan} {menggunakan|memanfaatkan} saluran yang {dibatasi|dikurangi} dan tidak {dihindari|dijauhi}.
+c. {Menimbang|Memandang} situasi, agenda {terakhir|akhir} digelar {sekarang|kini}.
+d. Staf {memperhatikan|mencermati} hal-hal yang {berkaitan|bersangkutan} dengan keselamatan.
+e. Juru arsip {mengarsipkan|menyimpan} berkas {prioritas|utama} harian.
+f. Mereka {mengoordinasikan|menyelaraskan} langkah dengan tim teknis.
+g. Staf {menjelaskan|mengklarifikasi|menguraikan|memaparkan} temuan {cermat|teliti} dan {rinci|terperinci}.
+h. Pihak yang {memusnahkan|menghancurkan|melenyapkan|menghapus} barang bukti dikenai tindakan.
+i. {Melaporkan|Mengumumkan|Menginformasikan|Mengabarkan} situasi {namun|tetapi} tanpa menyebut sumber.
+
+8. PENUTUP
+Demikian surat telegram ini disampaikan untuk dikerjakan dengan penuh tanggung jawab.

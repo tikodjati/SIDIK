@@ -6,6 +6,90 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/layer2/watermark": {
+      "post": {
+        "tags": [
+          "layer2-semantic"
+        ],
+        "summary": "Watermark",
+        "description": "Render naskah demo dengan varian frasa untuk satu salinan (tanpa DB; registri menyusul).",
+        "operationId": "watermark_api_v1_layer2_watermark_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatermarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatermarkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/layer2/extract": {
+      "post": {
+        "tags": [
+          "layer2-semantic"
+        ],
+        "summary": "Extract",
+        "description": "Baca identitas salinan dari teks bukti; menolak (tidak menebak) bila bukti tak cukup.",
+        "operationId": "extract_api_v1_layer2_extract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -29,6 +113,174 @@
             }
           }
         }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ExtractRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Teks bukti (ketikan ulang)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ExtractRequest"
+      },
+      "ExtractResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "IDENTIFIED",
+              "INSUFFICIENT_FORENSIC_ARTIFACTS"
+            ],
+            "title": "Status"
+          },
+          "copy_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Copy Id"
+          },
+          "flags": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flags"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "observed_bits",
+          "total_bits"
+        ],
+        "title": "ExtractResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WatermarkRequest": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "exclusiveMaximum": 4294967296.0,
+            "minimum": 0.0,
+            "title": "Copy Id",
+            "description": "ID salinan (NRP/penerima dicari lewat DB)"
+          },
+          "flags": {
+            "type": "integer",
+            "exclusiveMaximum": 16.0,
+            "minimum": 0.0,
+            "title": "Flags",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id"
+        ],
+        "title": "WatermarkRequest"
+      },
+      "WatermarkResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "slots": {
+            "type": "integer",
+            "title": "Slots"
+          },
+          "capacity_bits": {
+            "type": "integer",
+            "title": "Capacity Bits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "slots",
+          "capacity_bits"
+        ],
+        "title": "WatermarkResponse"
       }
     }
   }
