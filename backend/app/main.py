@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import layer2
+from app.api import intake, layer2, ledger, registry
 from app.config import settings
 
 app = FastAPI(
@@ -18,6 +18,9 @@ app.add_middleware(
 )
 
 app.include_router(layer2.router)
+app.include_router(registry.router)
+app.include_router(intake.router)
+app.include_router(ledger.router)
 
 
 @app.get("/health", tags=["system"])

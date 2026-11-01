@@ -90,6 +90,310 @@
         }
       }
     },
+    "/api/v1/recipients": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Recipients",
+        "operationId": "list_recipients_api_v1_recipients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Recipients Api V1 Recipients Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Create Recipient",
+        "operationId": "create_recipient_api_v1_recipients_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipientIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Create Document",
+        "operationId": "create_document_api_v1_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{document_id}/copies": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Issue Copy",
+        "description": "Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.",
+        "operationId": "issue_copy_api_v1_documents__document_id__copies_post",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "anonim",
+              "title": "X-Actor"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intake/text": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Text",
+        "description": "Analisis teks bukti, petakan ke salinan terdaftar, dan catat investigasi di ledger.\n\nDua pagar anti salah-tuduh: dekoder menolak bukti rusak berat, dan `copy_id` hasil dekode\nwajib terdaftar. Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya\nhash bukti, bukan isi teksnya.",
+        "operationId": "intake_text_api_v1_intake_text_post",
+        "parameters": [
+          {
+            "name": "X-Actor",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "anonim",
+              "title": "X-Actor"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "List Entries",
+        "operationId": "list_entries_api_v1_ledger_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerEntryOut"
+                  },
+                  "title": "Response List Entries Api V1 Ledger Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger/verify": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "Verify",
+        "description": "Verifikasi seluruh rantai (hash, urutan, tanda tangan). Catat `head_hash` secara berkala\ndi luar sistem untuk mendeteksi pemotongan ekor rantai.",
+        "operationId": "verify_api_v1_ledger_verify_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -118,6 +422,181 @@
   },
   "components": {
     "schemas": {
+      "Attribution": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "recipient": {
+            "$ref": "#/components/schemas/RecipientOut"
+          },
+          "document_nomor": {
+            "type": "string",
+            "title": "Document Nomor"
+          },
+          "document_judul": {
+            "type": "string",
+            "title": "Document Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "title": "Klasifikasi"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "recipient",
+          "document_nomor",
+          "document_judul",
+          "klasifikasi",
+          "issued_at"
+        ],
+        "title": "Attribution"
+      },
+      "CopyIssued": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "document_id": {
+            "type": "integer",
+            "title": "Document Id"
+          },
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Naskah dengan penanda Lapis 2 untuk salinan ini"
+          },
+          "ledger_seq": {
+            "type": "integer",
+            "title": "Ledger Seq"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "document_id",
+          "recipient_id",
+          "issued_at",
+          "text",
+          "ledger_seq"
+        ],
+        "title": "CopyIssued"
+      },
+      "CopyRequest": {
+        "properties": {
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recipient_id"
+        ],
+        "title": "CopyRequest"
+      },
+      "DocumentIn": {
+        "properties": {
+          "nomor": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nomor"
+          },
+          "judul": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "enum": [
+              "BIASA",
+              "TERBATAS",
+              "KONFIDENSIAL",
+              "RAHASIA",
+              "SANGAT RAHASIA"
+            ],
+            "title": "Klasifikasi",
+            "default": "RAHASIA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nomor",
+          "judul"
+        ],
+        "title": "DocumentIn"
+      },
+      "DocumentOut": {
+        "properties": {
+          "nomor": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nomor"
+          },
+          "judul": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "enum": [
+              "BIASA",
+              "TERBATAS",
+              "KONFIDENSIAL",
+              "RAHASIA",
+              "SANGAT RAHASIA"
+            ],
+            "title": "Klasifikasi",
+            "default": "RAHASIA"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nomor",
+          "judul",
+          "id",
+          "template",
+          "created_at"
+        ],
+        "title": "DocumentOut"
+      },
       "ExtractRequest": {
         "properties": {
           "text": {
@@ -196,6 +675,229 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IntakeResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "IDENTIFIED",
+              "UNREGISTERED",
+              "INSUFFICIENT_FORENSIC_ARTIFACTS"
+            ],
+            "title": "Status"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Attribution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/LedgerRef"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "observed_bits",
+          "total_bits",
+          "ledger",
+          "note"
+        ],
+        "title": "IntakeResult"
+      },
+      "IntakeTextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Teks bukti kebocoran"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref",
+            "description": "Nomor perkara/kasus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "IntakeTextRequest"
+      },
+      "LedgerEntryOut": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "prev_hash": {
+            "type": "string",
+            "title": "Prev Hash"
+          },
+          "entry_hash": {
+            "type": "string",
+            "title": "Entry Hash"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          },
+          "key_id": {
+            "type": "string",
+            "title": "Key Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seq",
+          "prev_hash",
+          "entry_hash",
+          "body",
+          "signature",
+          "key_id"
+        ],
+        "title": "LedgerEntryOut"
+      },
+      "LedgerRef": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "entry_hash": {
+            "type": "string",
+            "title": "Entry Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seq",
+          "entry_hash"
+        ],
+        "title": "LedgerRef"
+      },
+      "RecipientIn": {
+        "properties": {
+          "nrp": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Nrp"
+          },
+          "nama": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Nama"
+          },
+          "pangkat": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pangkat"
+          },
+          "jabatan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Jabatan"
+          },
+          "satuan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Satuan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nrp",
+          "nama",
+          "pangkat",
+          "jabatan",
+          "satuan"
+        ],
+        "title": "RecipientIn"
+      },
+      "RecipientOut": {
+        "properties": {
+          "nrp": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Nrp"
+          },
+          "nama": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Nama"
+          },
+          "pangkat": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pangkat"
+          },
+          "jabatan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Jabatan"
+          },
+          "satuan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Satuan"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nrp",
+          "nama",
+          "pangkat",
+          "jabatan",
+          "satuan",
+          "id"
+        ],
+        "title": "RecipientOut"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -235,6 +937,70 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifyOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "entries": {
+            "type": "integer",
+            "title": "Entries"
+          },
+          "head_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Seq"
+          },
+          "head_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Hash"
+          },
+          "bad_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bad Seq"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "entries",
+          "head_seq",
+          "head_hash"
+        ],
+        "title": "VerifyOut"
       },
       "WatermarkRequest": {
         "properties": {

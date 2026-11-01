@@ -8,6 +8,18 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sidik
+          POSTGRES_PASSWORD: sidik
+          POSTGRES_DB: sidik
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sidik" --health-interval 5s --health-retries 10
+    env:
+      SIDIK_TEST_POSTGRES_URL: postgresql+psycopg://sidik:sidik@localhost:5432/sidik
     defaults:
       run:
         working-directory: backend

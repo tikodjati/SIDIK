@@ -44,6 +44,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Recipients */
+        get: operations["list_recipients_api_v1_recipients_get"];
+        put?: never;
+        /** Create Recipient */
+        post: operations["create_recipient_api_v1_recipients_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Document */
+        post: operations["create_document_api_v1_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/copies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue Copy
+         * @description Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.
+         */
+        post: operations["issue_copy_api_v1_documents__document_id__copies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/intake/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Intake Text
+         * @description Analisis teks bukti, petakan ke salinan terdaftar, dan catat investigasi di ledger.
+         *
+         *     Dua pagar anti salah-tuduh: dekoder menolak bukti rusak berat, dan `copy_id` hasil dekode
+         *     wajib terdaftar. Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya
+         *     hash bukti, bukan isi teksnya.
+         */
+        post: operations["intake_text_api_v1_intake_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Entries */
+        get: operations["list_entries_api_v1_ledger_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ledger/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verify
+         * @description Verifikasi seluruh rantai (hash, urutan, tanda tangan). Catat `head_hash` secara berkala
+         *     di luar sistem untuk mendeteksi pemotongan ekor rantai.
+         */
+        get: operations["verify_api_v1_ledger_verify_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -65,6 +182,84 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Attribution */
+        Attribution: {
+            /** Copy Id */
+            copy_id: number;
+            recipient: components["schemas"]["RecipientOut"];
+            /** Document Nomor */
+            document_nomor: string;
+            /** Document Judul */
+            document_judul: string;
+            /** Klasifikasi */
+            klasifikasi: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+        };
+        /** CopyIssued */
+        CopyIssued: {
+            /** Copy Id */
+            copy_id: number;
+            /** Document Id */
+            document_id: number;
+            /** Recipient Id */
+            recipient_id: number;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /**
+             * Text
+             * @description Naskah dengan penanda Lapis 2 untuk salinan ini
+             */
+            text: string;
+            /** Ledger Seq */
+            ledger_seq: number;
+        };
+        /** CopyRequest */
+        CopyRequest: {
+            /** Recipient Id */
+            recipient_id: number;
+        };
+        /** DocumentIn */
+        DocumentIn: {
+            /** Nomor */
+            nomor: string;
+            /** Judul */
+            judul: string;
+            /**
+             * Klasifikasi
+             * @default RAHASIA
+             * @enum {string}
+             */
+            klasifikasi: "BIASA" | "TERBATAS" | "KONFIDENSIAL" | "RAHASIA" | "SANGAT RAHASIA";
+        };
+        /** DocumentOut */
+        DocumentOut: {
+            /** Nomor */
+            nomor: string;
+            /** Judul */
+            judul: string;
+            /**
+             * Klasifikasi
+             * @default RAHASIA
+             * @enum {string}
+             */
+            klasifikasi: "BIASA" | "TERBATAS" | "KONFIDENSIAL" | "RAHASIA" | "SANGAT RAHASIA";
+            /** Id */
+            id: number;
+            /** Template */
+            template: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** ExtractRequest */
         ExtractRequest: {
             /**
@@ -94,6 +289,85 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IntakeResult */
+        IntakeResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "IDENTIFIED" | "UNREGISTERED" | "INSUFFICIENT_FORENSIC_ARTIFACTS";
+            /** Observed Bits */
+            observed_bits: number;
+            /** Total Bits */
+            total_bits: number;
+            attribution?: components["schemas"]["Attribution"] | null;
+            ledger: components["schemas"]["LedgerRef"];
+            /** Note */
+            note: string;
+        };
+        /** IntakeTextRequest */
+        IntakeTextRequest: {
+            /**
+             * Text
+             * @description Teks bukti kebocoran
+             */
+            text: string;
+            /**
+             * Case Ref
+             * @description Nomor perkara/kasus
+             */
+            case_ref?: string | null;
+        };
+        /** LedgerEntryOut */
+        LedgerEntryOut: {
+            /** Seq */
+            seq: number;
+            /** Prev Hash */
+            prev_hash: string;
+            /** Entry Hash */
+            entry_hash: string;
+            /** Body */
+            body: string;
+            /** Signature */
+            signature: string;
+            /** Key Id */
+            key_id: string;
+        };
+        /** LedgerRef */
+        LedgerRef: {
+            /** Seq */
+            seq: number;
+            /** Entry Hash */
+            entry_hash: string;
+        };
+        /** RecipientIn */
+        RecipientIn: {
+            /** Nrp */
+            nrp: string;
+            /** Nama */
+            nama: string;
+            /** Pangkat */
+            pangkat: string;
+            /** Jabatan */
+            jabatan: string;
+            /** Satuan */
+            satuan: string;
+        };
+        /** RecipientOut */
+        RecipientOut: {
+            /** Nrp */
+            nrp: string;
+            /** Nama */
+            nama: string;
+            /** Pangkat */
+            pangkat: string;
+            /** Jabatan */
+            jabatan: string;
+            /** Satuan */
+            satuan: string;
+            /** Id */
+            id: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -106,6 +380,21 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VerifyOut */
+        VerifyOut: {
+            /** Ok */
+            ok: boolean;
+            /** Entries */
+            entries: number;
+            /** Head Seq */
+            head_seq: number | null;
+            /** Head Hash */
+            head_hash: string | null;
+            /** Bad Seq */
+            bad_seq?: number | null;
+            /** Reason */
+            reason?: string | null;
         };
         /** WatermarkRequest */
         WatermarkRequest: {
@@ -200,6 +489,216 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recipients_api_v1_recipients_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipientOut"][];
+                };
+            };
+        };
+    };
+    create_recipient_api_v1_recipients_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipientIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipientOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_document_api_v1_documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_copy_api_v1_documents__document_id__copies_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor"?: string;
+            };
+            path: {
+                document_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_text_api_v1_intake_text_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_entries_api_v1_ledger_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerEntryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_api_v1_ledger_verify_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyOut"];
                 };
             };
         };

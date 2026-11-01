@@ -19,6 +19,7 @@ services:
     environment:
       SIDIK_DATABASE_URL: postgresql+psycopg://sidik:${POSTGRES_PASSWORD:-sidik}@db:5432/sidik
       SIDIK_DATA_DIR: /data
+      SIDIK_SIGNING_KEY_PATH: /data/keys/ledger_ed25519.pem
     volumes:
       - ./data:/data
     ports:
