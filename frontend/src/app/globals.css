@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* Military Tactical Operations Center - dark, high-contrast.
+   Tanpa font eksternal: sistem air-gapped tidak boleh memuat Google Fonts. */
+:root {
+  --background: #0b0f0d;
+  --foreground: #d8e2dc;
+  --panel: #121a16;
+  --border: #243229;
+  --accent: #7fb069;
+  --danger: #e5484d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

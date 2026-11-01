@@ -32,8 +32,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/backend/lib/
+/backend/lib64/
 parts/
 sdist/
 var/
@@ -43,11 +43,11 @@ wheels/
 *.egg
 
 # Computer Vision & OCR Temporary Storage
-backend/app/storage/test_leaks/*
-backend/app/storage/watermarked_outputs/*
-!backend/app/storage/test_leaks/.gitkeep
-!backend/app/storage/watermarked_outputs/.gitkeep
-!backend/app/storage/master_templates/
+data/test_leaks/*
+data/watermarked_outputs/*
+!data/test_leaks/.gitkeep
+!data/watermarked_outputs/.gitkeep
+!data/master_templates/
 
 # Node.js & Next.js
 node_modules/
