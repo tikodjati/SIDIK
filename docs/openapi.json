@@ -155,6 +155,29 @@
       }
     },
     "/api/v1/documents": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_api_v1_documents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Documents Api V1 Documents Get"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "registry"
@@ -178,6 +201,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Copies",
+        "operationId": "list_copies_api_v1_copies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CopyOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Copies Api V1 Copies Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/text": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Copy Text",
+        "description": "Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin\nyang seharusnya mengaksesnya begitu RBAC ada.",
+        "operationId": "copy_text_api_v1_copies__copy_id__text_get",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyText"
                 }
               }
             }
@@ -342,6 +433,16 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "newest_first",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Newest First"
+            }
           }
         ],
         "responses": {
@@ -500,6 +601,50 @@
         ],
         "title": "CopyIssued"
       },
+      "CopyOut": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "document_id": {
+            "type": "integer",
+            "title": "Document Id"
+          },
+          "document_nomor": {
+            "type": "string",
+            "title": "Document Nomor"
+          },
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          },
+          "recipient_nama": {
+            "type": "string",
+            "title": "Recipient Nama"
+          },
+          "recipient_nrp": {
+            "type": "string",
+            "title": "Recipient Nrp"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "document_id",
+          "document_nomor",
+          "recipient_id",
+          "recipient_nama",
+          "recipient_nrp",
+          "issued_at"
+        ],
+        "title": "CopyOut"
+      },
       "CopyRequest": {
         "properties": {
           "recipient_id": {
@@ -512,6 +657,24 @@
           "recipient_id"
         ],
         "title": "CopyRequest"
+      },
+      "CopyText": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "text"
+        ],
+        "title": "CopyText"
       },
       "DocumentIn": {
         "properties": {

@@ -121,3 +121,32 @@ def test_verify_endpoint_ok_then_detects_database_tampering(client, engine):
                          "WHERE seq = 1"))
     bad = client.get("/api/v1/ledger/verify").json()
     assert not bad["ok"] and bad["bad_seq"] == 1
+
+
+def test_lists_documents_and_copies_with_names(client):
+    r, d = _setup(client)
+    copy = _issue(client, d["id"], r["id"])
+    docs = client.get("/api/v1/documents").json()
+    copies = client.get("/api/v1/copies").json()
+    assert [x["nomor"] for x in docs] == [DOCUMENT["nomor"]]
+    assert copies[0]["copy_id"] == copy["copy_id"]
+    assert (copies[0]["recipient_nama"], copies[0]["document_nomor"]) == (
+        RECIPIENT["nama"],
+        DOCUMENT["nomor"],
+    )
+
+
+def test_copy_text_is_reproducible_and_404_for_unknown(client):
+    r, d = _setup(client)
+    copy = _issue(client, d["id"], r["id"])
+    again = client.get(f"/api/v1/copies/{copy['copy_id']}/text").json()
+    assert again["text"] == copy["text"]
+    assert client.get("/api/v1/copies/12345/text").status_code == 404
+
+
+def test_ledger_can_be_listed_newest_first(client):
+    r, d = _setup(client)
+    _issue(client, d["id"], r["id"])
+    _intake(client, "teks bebas")
+    seqs = [e["seq"] for e in client.get("/api/v1/ledger?newest_first=true").json()]
+    assert seqs == [2, 1]

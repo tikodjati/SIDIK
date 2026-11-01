@@ -69,10 +69,49 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Documents */
+        get: operations["list_documents_api_v1_documents_get"];
         put?: never;
         /** Create Document */
         post: operations["create_document_api_v1_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/copies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Copies */
+        get: operations["list_copies_api_v1_copies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/copies/{copy_id}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Copy Text
+         * @description Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin
+         *     yang seharusnya mengaksesnya begitu RBAC ada.
+         */
+        get: operations["copy_text_api_v1_copies__copy_id__text_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -220,10 +259,37 @@ export interface components {
             /** Ledger Seq */
             ledger_seq: number;
         };
+        /** CopyOut */
+        CopyOut: {
+            /** Copy Id */
+            copy_id: number;
+            /** Document Id */
+            document_id: number;
+            /** Document Nomor */
+            document_nomor: string;
+            /** Recipient Id */
+            recipient_id: number;
+            /** Recipient Nama */
+            recipient_nama: string;
+            /** Recipient Nrp */
+            recipient_nrp: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+        };
         /** CopyRequest */
         CopyRequest: {
             /** Recipient Id */
             recipient_id: number;
+        };
+        /** CopyText */
+        CopyText: {
+            /** Copy Id */
+            copy_id: number;
+            /** Text */
+            text: string;
         };
         /** DocumentIn */
         DocumentIn: {
@@ -546,6 +612,26 @@ export interface operations {
             };
         };
     };
+    list_documents_api_v1_documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+        };
+    };
     create_document_api_v1_documents_post: {
         parameters: {
             query?: never;
@@ -566,6 +652,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_copies_api_v1_copies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyOut"][];
+                };
+            };
+        };
+    };
+    copy_text_api_v1_copies__copy_id__text_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                copy_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyText"];
                 };
             };
             /** @description Validation Error */
@@ -656,6 +793,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                newest_first?: boolean;
             };
             header?: never;
             path?: never;

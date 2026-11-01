@@ -12,7 +12,9 @@ from app.db import get_session
 from app.db.models import Copy, Document, Recipient
 from app.models.registry_models import (
     CopyIssued,
+    CopyOut,
     CopyRequest,
+    CopyText,
     DocumentIn,
     DocumentOut,
     RecipientIn,
@@ -49,6 +51,37 @@ def create_document(body: DocumentIn, session: Session = Depends(get_session)) -
         session.rollback()
         raise HTTPException(409, f"Nomor naskah {body.nomor} sudah terdaftar") from exc
     return document
+
+
+@router.get("/documents", response_model=list[DocumentOut])
+def list_documents(session: Session = Depends(get_session)) -> list[Document]:
+    return list(session.scalars(select(Document).order_by(Document.id)))
+
+
+@router.get("/copies", response_model=list[CopyOut])
+def list_copies(session: Session = Depends(get_session)) -> list[CopyOut]:
+    rows = session.scalars(select(Copy).order_by(Copy.issued_at.desc(), Copy.copy_id))
+    return [
+        CopyOut(
+            copy_id=c.copy_id,
+            document_id=c.document_id,
+            document_nomor=c.document.nomor,
+            recipient_id=c.recipient_id,
+            recipient_nama=c.recipient.nama,
+            recipient_nrp=c.recipient.nrp,
+            issued_at=c.issued_at,
+        )
+        for c in rows
+    ]
+
+
+@router.get("/copies/{copy_id}/text", response_model=CopyText)
+def copy_text(copy_id: int, session: Session = Depends(get_session)) -> CopyText:
+    """Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin
+    yang seharusnya mengaksesnya begitu RBAC ada."""
+    if session.get(Copy, copy_id) is None:
+        raise HTTPException(404, "salinan tidak ditemukan")
+    return CopyText(copy_id=copy_id, text=encode_text(demo_template(), encode_payload(copy_id)))
 
 
 @router.post("/documents/{document_id}/copies", response_model=CopyIssued, status_code=201)

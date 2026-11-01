@@ -45,6 +45,21 @@ class CopyIssued(BaseModel):
     ledger_seq: int
 
 
+class CopyOut(BaseModel):
+    copy_id: int
+    document_id: int
+    document_nomor: str
+    recipient_id: int
+    recipient_nama: str
+    recipient_nrp: str
+    issued_at: datetime
+
+
+class CopyText(BaseModel):
+    copy_id: int
+    text: str
+
+
 class IntakeTextRequest(BaseModel):
     text: str = Field(min_length=1, max_length=200_000, description="Teks bukti kebocoran")
     case_ref: str | None = Field(default=None, max_length=64, description="Nomor perkara/kasus")

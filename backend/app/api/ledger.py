@@ -14,11 +14,11 @@ router = APIRouter(prefix="/api/v1/ledger", tags=["ledger"])
 def list_entries(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    newest_first: bool = False,
     session: Session = Depends(get_session),
 ) -> list[LedgerEntry]:
-    return list(
-        session.scalars(select(LedgerEntry).order_by(LedgerEntry.seq).offset(offset).limit(limit))
-    )
+    order = LedgerEntry.seq.desc() if newest_first else LedgerEntry.seq
+    return list(session.scalars(select(LedgerEntry).order_by(order).offset(offset).limit(limit)))
 
 
 @router.get("/verify", response_model=VerifyOut)

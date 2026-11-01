@@ -9,6 +9,7 @@
   --border: #243229;
   --accent: #7fb069;
   --danger: #e5484d;
+  --warn: #d9a441;
 }
 
 @theme inline {
@@ -18,6 +19,7 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-danger: var(--danger);
+  --color-warn: var(--warn);
   --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
