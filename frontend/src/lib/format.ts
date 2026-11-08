@@ -41,7 +41,8 @@ export function summarize(body: LedgerBody | null): string {
   }
   if (isIntake(body.event)) {
     const channel = body.event === "LEAK_INTAKE_PHOTO" ? "foto" : "teks";
-    const id = d.copy_id == null ? "tanpa ID" : hexId(Number(d.copy_id));
+    const ids = Array.isArray(d.copy_ids) ? d.copy_ids.map((c) => hexId(Number(c))).join(" + ") : null;
+    const id = ids ?? (d.copy_id == null ? "tanpa ID" : hexId(Number(d.copy_id)));
     const ref = d.case_ref ? ` · perkara ${String(d.case_ref)}` : "";
     return `${channel}: ${String(d.status)} · ${id} · ${String(d.observed_bits)}/${String(d.total_bits)}${ref}`;
   }

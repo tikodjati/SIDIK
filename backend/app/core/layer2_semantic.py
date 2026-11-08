@@ -21,6 +21,8 @@ from app.core.payload import DATA_BYTES, DEFAULT_NSYM
 
 FRAME_BITS = (DATA_BYTES + DEFAULT_NSYM) * 8
 _GROUP = re.compile(r"\{([^{}]*)\}")
+_TOKEN = re.compile(r"\[\[([^\[\]]*)\]\]")  # honey-token Lapis 3: '#' = digit acak per salinan
+MIN_TOKEN_DIGITS = 5  # cukup acak agar bocoran rekaan tak kebetulan sama dengan token terbit
 MIN_FUZZY_LEN = 6  # varian lebih pendek dari ini harus cocok persis (fuzzy tak andal)
 FUZZY_MIN_SCORE = 88.0
 
@@ -45,31 +47,72 @@ class Slot:
 
 
 @dataclass(frozen=True)
+class HoneyToken:
+    """Angka fiktif yang berbeda per salinan (Lapis 3). `pattern`: '#' diganti digit acak, karakter
+    lain tetap (mis. '1##.###' -> '143.275'). Semua digit pada font naskah selebar sama, jadi
+    tata letak tak berubah antar-salinan."""
+
+    index: int
+    pattern: str
+
+    @property
+    def placeholder(self) -> str:
+        return self.pattern.replace("#", "0")
+
+
+@dataclass(frozen=True)
 class Template:
-    parts: tuple[str | Slot, ...]
+    parts: tuple[str | Slot | HoneyToken, ...]
 
     @property
     def slots(self) -> list[Slot]:
         return [p for p in self.parts if isinstance(p, Slot)]
 
     @property
+    def tokens(self) -> list[HoneyToken]:
+        return [p for p in self.parts if isinstance(p, HoneyToken)]
+
+    @property
     def capacity_bits(self) -> int:
         return sum(s.bits for s in self.slots)
+
+
+def _split_tokens(text: str, first_index: int) -> list[str | HoneyToken]:
+    out: list[str | HoneyToken] = []
+    pos = 0
+    for match in _TOKEN.finditer(text):
+        pattern = match.group(1)
+        if pattern.count("#") < MIN_TOKEN_DIGITS or not re.fullmatch(r"[#0-9.,:/\-]+", pattern):
+            raise TemplateError(
+                f"token '{match.group(0)}': minimal {MIN_TOKEN_DIGITS} '#', hanya digit/tanda baca"
+            )
+        out += [text[pos : match.start()], HoneyToken(first_index + len(out) // 2, pattern)]
+        pos = match.end()
+    return out + [text[pos:]]
 
 
 def parse_template(source: str) -> Template:
     """Urai teks template, lalu validasi keunikan varian."""
     text = "\n".join(ln for ln in source.splitlines() if not ln.lstrip().startswith("#"))
-    parts: list[str | Slot] = []
+    parts: list[str | Slot | HoneyToken] = []
+    n_slots = n_tokens = 0
     pos = 0
+
+    def add_text(chunk: str) -> None:
+        nonlocal n_tokens
+        pieces = _split_tokens(chunk, n_tokens)
+        n_tokens += sum(isinstance(p, HoneyToken) for p in pieces)
+        parts.extend(pieces)
+
     for match in _GROUP.finditer(text):
-        parts.append(text[pos : match.start()])
+        add_text(text[pos : match.start()])
         variants = tuple(v.strip() for v in match.group(1).split("|"))
         if len(variants) not in (2, 4) or not all(variants):
             raise TemplateError(f"grup '{match.group(0)}': jumlah varian harus 2 atau 4")
-        parts.append(Slot(len([p for p in parts if isinstance(p, Slot)]), variants))
+        parts.append(Slot(n_slots, variants))
+        n_slots += 1
         pos = match.end()
-    parts.append(text[pos:])
+    add_text(text[pos:])
     template = Template(tuple(parts))
     _validate_unique(template)
     return template
@@ -155,10 +198,21 @@ def variant_scores(template: Template, chosen: dict[int, int]) -> dict[int, floa
     return scores
 
 
-def encode_text(template: Template, frame: bytes) -> str:
-    """Render naskah dengan varian terpilih menurut bit frame."""
+def encode_text(
+    template: Template, frame: bytes, tokens: tuple[str, ...] | None = None
+) -> str:
+    """Render naskah dengan varian terpilih menurut bit frame. `tokens`: nilai honey-token
+    salinan (Lapis 3), urut indeks token; None = angka nol (naskah tanpa registri)."""
     chosen = iter(variant_indices(template, frame))
-    return "".join(p if isinstance(p, str) else p.variants[next(chosen)] for p in template.parts)
+
+    def render(p: str | Slot | HoneyToken) -> str:
+        if isinstance(p, str):
+            return p
+        if isinstance(p, HoneyToken):
+            return tokens[p.index] if tokens else p.placeholder
+        return p.variants[next(chosen)]
+
+    return "".join(render(p) for p in template.parts)
 
 
 def _match_score(variant: str, vocab: set[str]) -> float:

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN, DISTRIBUTOR, require_roles
 from app.config import settings
+from app.core import layer3_honeytoken as l3
 from app.core import naskah
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, encode_text
@@ -90,10 +91,14 @@ def list_copies(session: Session = Depends(get_session)) -> list[CopyOut]:
     dependencies=[Depends(require_roles(ADMIN))],
 )
 def copy_text(copy_id: int, session: Session = Depends(get_session)) -> CopyText:
-    """Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin."""
-    if session.get(Copy, copy_id) is None:
+    """Render ulang teks salinan untuk simulasi demo kebocoran. Hanya admin."""
+    copy = session.get(Copy, copy_id)
+    if copy is None:
         raise HTTPException(404, "salinan tidak ditemukan")
-    return CopyText(copy_id=copy_id, text=encode_text(demo_template(), encode_payload(copy_id)))
+    tokens = l3.ensure_tokens(session, copy, demo_template())
+    session.commit()
+    text = encode_text(demo_template(), encode_payload(copy_id), tokens)
+    return CopyText(copy_id=copy_id, text=text)
 
 
 @router.get(
@@ -107,13 +112,14 @@ def copy_pdf(
     signer: Signer = Depends(get_signer),
     user: User = Depends(_staff),
 ) -> Response:
-    """PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan
-    pergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.
-    Setiap unduhan dicatat."""
+    """PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2),
+    pergeseran spasi antar-kata (Lapis 1), dan angka honey-token khusus salinan (Lapis 3).
+    Pemenggalan baris sama untuk semua salinan. Setiap unduhan dicatat."""
     copy = session.get(Copy, copy_id)
     if copy is None:
         raise HTTPException(404, "salinan tidak ditemukan")
-    pdf = naskah.copy_pdf(copy_id, settings.layer1_delta_pt)
+    tokens = l3.ensure_tokens(session, copy, demo_template())
+    pdf = naskah.copy_pdf(copy_id, settings.layer1_delta_pt, tokens)
     data = {"copy_id": copy_id, "document_nomor": copy.document.nomor, "format": "pdf"}
     append_event(session, signer, "COPY_EXPORTED", data, user.username)
     session.commit()
@@ -149,6 +155,7 @@ def issue_copy(
     copy = Copy(copy_id=copy_id, document_id=document.id, recipient_id=recipient.id)
     session.add(copy)
     session.flush()
+    tokens = l3.ensure_tokens(session, copy, demo_template())
     entry = append_event(
         session,
         signer,
@@ -162,7 +169,7 @@ def issue_copy(
         user.username,
     )
     session.commit()
-    text = encode_text(demo_template(), encode_payload(copy_id))
+    text = encode_text(demo_template(), encode_payload(copy_id), tokens)
     return CopyIssued(
         copy_id=copy_id,
         document_id=document.id,

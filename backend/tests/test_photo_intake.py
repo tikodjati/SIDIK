@@ -71,7 +71,10 @@ def test_photo_of_downloaded_pdf_identifies_the_recipient(client):
     last = json.loads(client.get("/api/v1/ledger?newest_first=true").json()[0]["body"])
     assert last["event"] == "LEAK_INTAKE_PHOTO" and last["data"]["case_ref"] == "K-FOTO"
     assert len(last["data"]["evidence_sha256"]) == 64
-    assert [r["layer"] for r in last["data"]["layers"]] == ["L1_SPASI", "L2_KATA"]
+    assert [r["layer"] for r in last["data"]["layers"]] == ["L1_SPASI", "L2_KATA", "L3_TOKEN"]
+    # honey-token Lapis 3 juga terbaca dari foto dan semuanya milik salinan ini
+    assert len(body["tokens"]) >= 2 and layers["L3_TOKEN"]["decoded_alone"]
+    assert all(t["copy_id"] == copy["copy_id"] and t["confirmed"] for t in body["tokens"])
 
 
 def test_text_copied_from_downloaded_pdf_identifies_the_recipient(client):

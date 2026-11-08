@@ -41,7 +41,7 @@ class CopyIssued(BaseModel):
     document_id: int
     recipient_id: int
     issued_at: datetime
-    text: str = Field(description="Naskah dengan penanda Lapis 2 untuk salinan ini")
+    text: str = Field(description="Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini")
     ledger_seq: int
 
 
@@ -80,22 +80,44 @@ class LedgerRef(BaseModel):
 
 
 class LayerReading(BaseModel):
-    layer: Literal["L1_SPASI", "L2_KATA"]
+    layer: Literal["L1_SPASI", "L2_KATA", "L3_TOKEN"]
     observed_bits: int
     total_bits: int
     decoded_alone: bool = Field(description="Lapis ini sendiri cukup untuk terdekode")
 
 
+class TokenHit(BaseModel):
+    token_index: int
+    value: str = Field(description="Angka honey-token seperti tercetak di salinan")
+    copy_id: int
+    recipient_nama: str
+    recipient_nrp: str
+    confirmed: bool = Field(
+        description="Salinan pemilik token teratribusi (>= 2 token, atau dikonfirmasi lapis lain)"
+    )
+
+
 class IntakeResult(BaseModel):
     status: Literal[
-        "IDENTIFIED", "UNREGISTERED", "CONFLICTING_EVIDENCE", "INSUFFICIENT_FORENSIC_ARTIFACTS"
+        "IDENTIFIED",
+        "COLLUSION_SUSPECTED",
+        "UNREGISTERED",
+        "CONFLICTING_EVIDENCE",
+        "INSUFFICIENT_FORENSIC_ARTIFACTS",
     ]
     observed_bits: int
     total_bits: int
-    layers: list[LayerReading] = Field(
-        default_factory=list, description="Rincian per lapis; hanya intake foto"
+    layers: list[LayerReading] = Field(default_factory=list, description="Rincian per lapis")
+    attribution: Attribution | None = Field(
+        default=None, description="Salinan teratribusi (status IDENTIFIED)"
     )
-    attribution: Attribution | None = None
+    attributions: list[Attribution] = Field(
+        default_factory=list,
+        description="Semua salinan teratribusi; lebih dari satu = COLLUSION_SUSPECTED",
+    )
+    tokens: list[TokenHit] = Field(
+        default_factory=list, description="Honey-token Lapis 3 yang ditemukan di bukti"
+    )
     ledger: LedgerRef
     note: str
     aligned_preview: str | None = Field(

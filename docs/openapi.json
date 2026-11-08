@@ -770,7 +770,7 @@
           "registry"
         ],
         "summary": "Copy Text",
-        "description": "Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin.",
+        "description": "Render ulang teks salinan untuk simulasi demo kebocoran. Hanya admin.",
         "operationId": "copy_text_api_v1_copies__copy_id__text_get",
         "parameters": [
           {
@@ -829,7 +829,7 @@
           "registry"
         ],
         "summary": "Copy Pdf",
-        "description": "PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan\npergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.\nSetiap unduhan dicatat.",
+        "description": "PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2),\npergeseran spasi antar-kata (Lapis 1), dan angka honey-token khusus salinan (Lapis 3).\nPemenggalan baris sama untuk semua salinan. Setiap unduhan dicatat.",
         "operationId": "copy_pdf_api_v1_copies__copy_id__pdf_get",
         "parameters": [
           {
@@ -953,7 +953,7 @@
           "intake"
         ],
         "summary": "Intake Text",
-        "description": "Analisis teks bukti (ketik ulang / salinan teks) lewat Lapis 2.",
+        "description": "Analisis teks bukti (ketik ulang / salinan teks / parafrase) lewat Lapis 2 (pilihan kata)\ndan Lapis 3 (honey-token: angka fiktif khusus salinan).",
         "operationId": "intake_text_api_v1_intake_text_post",
         "parameters": [
           {
@@ -1013,7 +1013,7 @@
           "intake"
         ],
         "summary": "Intake Photo",
-        "description": "Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dibaca dari bentuk kata, lalu\npergeseran spasi (Lapis 1) diukur; bukti keduanya digabung. Bila tiap lapis menunjuk salinan\nberbeda, hasilnya CONFLICTING_EVIDENCE.\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
+        "description": "Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dan angka honey-token (Lapis 3)\ndibaca dari bentuknya, lalu pergeseran spasi (Lapis 1) diukur; bukti Lapis 1 dan 2 digabung.\nBila keduanya menunjuk salinan berbeda, hasilnya CONFLICTING_EVIDENCE.\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
         "operationId": "intake_photo_api_v1_intake_photo_post",
         "parameters": [
           {
@@ -1340,7 +1340,7 @@
           "text": {
             "type": "string",
             "title": "Text",
-            "description": "Naskah dengan penanda Lapis 2 untuk salinan ini"
+            "description": "Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini"
           },
           "ledger_seq": {
             "type": "integer",
@@ -1601,6 +1601,7 @@
             "type": "string",
             "enum": [
               "IDENTIFIED",
+              "COLLUSION_SUSPECTED",
               "UNREGISTERED",
               "CONFLICTING_EVIDENCE",
               "INSUFFICIENT_FORENSIC_ARTIFACTS"
@@ -1621,7 +1622,7 @@
             },
             "type": "array",
             "title": "Layers",
-            "description": "Rincian per lapis; hanya intake foto"
+            "description": "Rincian per lapis"
           },
           "attribution": {
             "anyOf": [
@@ -1631,7 +1632,24 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Salinan teratribusi (status IDENTIFIED)"
+          },
+          "attributions": {
+            "items": {
+              "$ref": "#/components/schemas/Attribution"
+            },
+            "type": "array",
+            "title": "Attributions",
+            "description": "Semua salinan teratribusi; lebih dari satu = COLLUSION_SUSPECTED"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenHit"
+            },
+            "type": "array",
+            "title": "Tokens",
+            "description": "Honey-token Lapis 3 yang ditemukan di bukti"
           },
           "ledger": {
             "$ref": "#/components/schemas/LedgerRef"
@@ -1698,7 +1716,8 @@
             "type": "string",
             "enum": [
               "L1_SPASI",
-              "L2_KATA"
+              "L2_KATA",
+              "L3_TOKEN"
             ],
             "title": "Layer"
           },
@@ -1893,6 +1912,46 @@
           "id"
         ],
         "title": "RecipientOut"
+      },
+      "TokenHit": {
+        "properties": {
+          "token_index": {
+            "type": "integer",
+            "title": "Token Index"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "Angka honey-token seperti tercetak di salinan"
+          },
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "recipient_nama": {
+            "type": "string",
+            "title": "Recipient Nama"
+          },
+          "recipient_nrp": {
+            "type": "string",
+            "title": "Recipient Nrp"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "description": "Salinan pemilik token teratribusi (>= 2 token, atau dikonfirmasi lapis lain)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token_index",
+          "value",
+          "copy_id",
+          "recipient_nama",
+          "recipient_nrp",
+          "confirmed"
+        ],
+        "title": "TokenHit"
       },
       "UserActiveUpdate": {
         "properties": {

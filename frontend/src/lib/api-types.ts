@@ -223,7 +223,7 @@ export interface paths {
         };
         /**
          * Copy Text
-         * @description Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin.
+         * @description Render ulang teks salinan untuk simulasi demo kebocoran. Hanya admin.
          */
         get: operations["copy_text_api_v1_copies__copy_id__text_get"];
         put?: never;
@@ -243,9 +243,9 @@ export interface paths {
         };
         /**
          * Copy Pdf
-         * @description PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan
-         *     pergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.
-         *     Setiap unduhan dicatat.
+         * @description PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2),
+         *     pergeseran spasi antar-kata (Lapis 1), dan angka honey-token khusus salinan (Lapis 3).
+         *     Pemenggalan baris sama untuk semua salinan. Setiap unduhan dicatat.
          */
         get: operations["copy_pdf_api_v1_copies__copy_id__pdf_get"];
         put?: never;
@@ -287,7 +287,8 @@ export interface paths {
         put?: never;
         /**
          * Intake Text
-         * @description Analisis teks bukti (ketik ulang / salinan teks) lewat Lapis 2.
+         * @description Analisis teks bukti (ketik ulang / salinan teks / parafrase) lewat Lapis 2 (pilihan kata)
+         *     dan Lapis 3 (honey-token: angka fiktif khusus salinan).
          */
         post: operations["intake_text_api_v1_intake_text_post"];
         delete?: never;
@@ -307,9 +308,9 @@ export interface paths {
         put?: never;
         /**
          * Intake Photo
-         * @description Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dibaca dari bentuk kata, lalu
-         *     pergeseran spasi (Lapis 1) diukur; bukti keduanya digabung. Bila tiap lapis menunjuk salinan
-         *     berbeda, hasilnya CONFLICTING_EVIDENCE.
+         * @description Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dan angka honey-token (Lapis 3)
+         *     dibaca dari bentuknya, lalu pergeseran spasi (Lapis 1) diukur; bukti Lapis 1 dan 2 digabung.
+         *     Bila keduanya menunjuk salinan berbeda, hasilnya CONFLICTING_EVIDENCE.
          *
          *     Seluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama
          *     karena semua kandidat pelurusan dicoba.
@@ -429,7 +430,7 @@ export interface components {
             issued_at: string;
             /**
              * Text
-             * @description Naskah dengan penanda Lapis 2 untuk salinan ini
+             * @description Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini
              */
             text: string;
             /** Ledger Seq */
@@ -537,17 +538,28 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "IDENTIFIED" | "UNREGISTERED" | "CONFLICTING_EVIDENCE" | "INSUFFICIENT_FORENSIC_ARTIFACTS";
+            status: "IDENTIFIED" | "COLLUSION_SUSPECTED" | "UNREGISTERED" | "CONFLICTING_EVIDENCE" | "INSUFFICIENT_FORENSIC_ARTIFACTS";
             /** Observed Bits */
             observed_bits: number;
             /** Total Bits */
             total_bits: number;
             /**
              * Layers
-             * @description Rincian per lapis; hanya intake foto
+             * @description Rincian per lapis
              */
             layers?: components["schemas"]["LayerReading"][];
+            /** @description Salinan teratribusi (status IDENTIFIED) */
             attribution?: components["schemas"]["Attribution"] | null;
+            /**
+             * Attributions
+             * @description Semua salinan teratribusi; lebih dari satu = COLLUSION_SUSPECTED
+             */
+            attributions?: components["schemas"]["Attribution"][];
+            /**
+             * Tokens
+             * @description Honey-token Lapis 3 yang ditemukan di bukti
+             */
+            tokens?: components["schemas"]["TokenHit"][];
             ledger: components["schemas"]["LedgerRef"];
             /** Note */
             note: string;
@@ -576,7 +588,7 @@ export interface components {
              * Layer
              * @enum {string}
              */
-            layer: "L1_SPASI" | "L2_KATA";
+            layer: "L1_SPASI" | "L2_KATA" | "L3_TOKEN";
             /** Observed Bits */
             observed_bits: number;
             /** Total Bits */
@@ -643,6 +655,27 @@ export interface components {
             satuan: string;
             /** Id */
             id: number;
+        };
+        /** TokenHit */
+        TokenHit: {
+            /** Token Index */
+            token_index: number;
+            /**
+             * Value
+             * @description Angka honey-token seperti tercetak di salinan
+             */
+            value: string;
+            /** Copy Id */
+            copy_id: number;
+            /** Recipient Nama */
+            recipient_nama: string;
+            /** Recipient Nrp */
+            recipient_nrp: string;
+            /**
+             * Confirmed
+             * @description Salinan pemilik token teratribusi (>= 2 token, atau dikonfirmasi lapis lain)
+             */
+            confirmed: boolean;
         };
         /** UserActiveUpdate */
         UserActiveUpdate: {

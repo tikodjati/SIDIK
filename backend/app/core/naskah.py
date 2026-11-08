@@ -22,6 +22,7 @@ from app.core import layer1_visual as l1
 from app.core import vision_extractor as vx
 from app.core.layer2_semantic import (
     FRAME_BITS,
+    HoneyToken,
     Slot,
     demo_template,
     variant_indices,
@@ -30,7 +31,7 @@ from app.core.layer2_semantic import (
 from app.core.payload import PayloadDecodeError, decode_scores, encode_payload
 
 FONT_SIZE, LEADING = 9.5, 11.5
-Piece = str | int  # teks tetap, atau indeks slot
+Piece = str | int | HoneyToken  # teks tetap, indeks slot, atau honey-token (Lapis 3)
 Token = tuple[Piece, ...]  # satu kata cetak (mis. ("akurat", ".") = varian + tanda baca)
 
 # Kunci skor Lapis 2 digeser kelipatan FRAME_BITS agar tak bertabrakan dengan kunci Lapis 1
@@ -51,6 +52,8 @@ class Structure:
 
 
 def _piece_width(piece: Piece, widest: bool) -> float:
+    if isinstance(piece, HoneyToken):  # digit selebar sama: nilai token tak mengubah lebar
+        return pymupdf.get_text_length(piece.placeholder, l1.FONT, FONT_SIZE)
     if isinstance(piece, str):
         return pymupdf.get_text_length(piece, l1.FONT, FONT_SIZE)
     variants = demo_template().slots[piece].variants
@@ -72,6 +75,9 @@ def _paragraphs() -> list[list[Token]]:
     for part in demo_template().parts:
         if isinstance(part, Slot):
             current.append(part.index)
+            continue
+        if isinstance(part, HoneyToken):
+            current.append(part)
             continue
         for m in re.finditer(r"\n|[ \t]+|[^\s]+", part):
             text = m.group()
@@ -123,16 +129,27 @@ def structure() -> Structure:
     return Structure(tuple(lines), tuple(baselines))
 
 
-def _token_text(token: Token, choice: tuple[int, ...]) -> str:
+def _token_text(
+    token: Token, choice: tuple[int, ...] | dict[int, int], tokens: tuple[str, ...] | None = None
+) -> str:
     slots = demo_template().slots
-    return "".join(p if isinstance(p, str) else slots[p].variants[choice[p]] for p in token)
+
+    def text(p: Piece) -> str:
+        if isinstance(p, str):
+            return p
+        if isinstance(p, HoneyToken):
+            return tokens[p.index] if tokens else p.placeholder
+        return slots[p].variants[choice[p]]
+
+    return "".join(text(p) for p in token)
 
 
 @lru_cache(maxsize=8)
-def layout_for(choice: tuple[int, ...]) -> l1.Layout:
-    """Tata letak salinan dengan varian terpilih tiap slot (posisi baris sama untuk semua)."""
+def layout_for(choice: tuple[int, ...], tokens: tuple[str, ...] | None = None) -> l1.Layout:
+    """Tata letak salinan dengan varian terpilih tiap slot dan nilai honey-token (posisi baris
+    sama untuk semua salinan)."""
     st = structure()
-    lines = tuple(tuple(_token_text(t, choice) for t in line) for line in st.lines)
+    lines = tuple(tuple(_token_text(t, choice, tokens) for t in line) for line in st.lines)
     return l1.Layout("naskah", lines, st.baselines, FONT_SIZE, LEADING)
 
 
@@ -145,20 +162,23 @@ def copy_choice(copy_id: int) -> tuple[int, ...]:
     return variant_indices(demo_template(), encode_payload(copy_id))
 
 
-def copy_pdf(copy_id: int, delta_pt: float) -> bytes:
-    """PDF salinan: varian kata (Lapis 2) dan modulasi spasi (Lapis 1) untuk `copy_id`."""
-    return l1.render_pdf(layout_for(copy_choice(copy_id)), encode_payload(copy_id), delta_pt)
+def copy_pdf(copy_id: int, delta_pt: float, tokens: tuple[str, ...] | None = None) -> bytes:
+    """PDF salinan: varian kata (Lapis 2), modulasi spasi (Lapis 1), dan honey-token (Lapis 3,
+    nilai dari registri) untuk `copy_id`."""
+    layout = layout_for(copy_choice(copy_id), tokens)
+    return l1.render_pdf(layout, encode_payload(copy_id), delta_pt)
 
 
 @lru_cache(maxsize=1024)
-def _word_template(text: str, dpi: int) -> np.ndarray:
-    """Render satu kata berbingkai putih, dipotong setinggi pita baris, sedikit diburamkan."""
+def _word_template(text: str, dpi: int, pad_pt: float = PAD_PT) -> np.ndarray:
+    """Render satu kata berbingkai putih, dipotong setinggi pita baris, sedikit diburamkan.
+    `pad_pt` = 0 untuk satu digit di tengah angka (tetangganya digit, bukan putih)."""
     k = dpi / 72
-    width = pymupdf.get_text_length(text, l1.FONT, FONT_SIZE) + 2 * PAD_PT
+    width = pymupdf.get_text_length(text, l1.FONT, FONT_SIZE) + 2 * pad_pt
     base = FONT_SIZE * 1.3
     doc = pymupdf.open()
     page = doc.new_page(width=width, height=FONT_SIZE * 2)
-    page.insert_text((PAD_PT, base), text, fontname=l1.FONT, fontsize=FONT_SIZE)
+    page.insert_text((pad_pt, base), text, fontname=l1.FONT, fontsize=FONT_SIZE)
     img = l1.rasterize_gray(doc.tobytes(), dpi)
     crop = img[int((base - 0.8 * FONT_SIZE) * k) : int((base + 0.3 * FONT_SIZE) * k)]
     return cv2.GaussianBlur(crop.astype(np.float32), (0, 0), 1.0)
@@ -213,6 +233,72 @@ def read_variants(
     return chosen
 
 
+TOKEN_SEARCH_PX = 45  # jendela pencarian kata ber-token (posisi dari tata letak varian terbaca)
+DIGIT_SEARCH_PX = 4  # sisa geser per digit setelah kata ber-token ditemukan
+DIGIT_MIN_MARGIN = 0.05  # digit terbaik harus jelas lebih cocok dari digit lain
+
+
+def read_tokens(
+    flat: np.ndarray,
+    tracked: list[tuple[int, int] | None],
+    choice: dict[int, int],
+    dpi: int,
+) -> dict[int, str]:
+    """Nilai honey-token yang terbaca tegas dari foto, {indeks token: nilai seperti tercetak}.
+
+    Tanpa OCR: kata ber-token dicari dulu (bentuk angka nol sebagai pengganti), lalu tiap digit
+    acak dicocokkan ke bentuk 0-9 pada posisinya (digit selebar sama). Token dengan satu digit
+    saja yang ragu dilewati, jadi pembacaan yang salah tak menghasilkan nilai."""
+    k = dpi / 72
+    pad_px = PAD_PT * k
+    layout = layout_for(tuple(choice.get(i, 0) for i in range(len(demo_template().slots))))
+    src = cv2.GaussianBlur(flat.astype(np.float32), (0, 0), 1.0)
+    digits = {d: _word_template(d, dpi, 0.0) for d in "0123456789"}
+    out: dict[int, str] = {}
+    for li, rows in enumerate(tracked):
+        if rows is None:
+            continue
+        y0, y1 = max(0, rows[0] - 12), min(src.shape[0], rows[1] + 12)
+        for ti, word in enumerate(structure().lines[li]):
+            token = next((p for p in word if isinstance(p, HoneyToken)), None)
+            if token is None:
+                continue
+            text = _token_text(word, choice)
+            tpl = _word_template(text, dpi)
+            start = layout.spans[li][ti][0] * k
+            x0 = int(max(0, start - pad_px - TOKEN_SEARCH_PX))
+            x1 = int(min(src.shape[1], start - pad_px + tpl.shape[1] + TOKEN_SEARCH_PX))
+            region = src[y0:y1, x0:x1]
+            if region.shape[0] < tpl.shape[0] or region.shape[1] < tpl.shape[1]:
+                continue
+            score, loc = cv2.minMaxLoc(cv2.matchTemplate(region, tpl, cv2.TM_CCOEFF_NORMED))[1::2]
+            if score < MIN_MATCH:
+                continue
+            found = x0 + loc[0] + pad_px  # awal kata pada foto (px)
+            prefix = "".join(p for p in word[: word.index(token)] if isinstance(p, str))
+            value = list(token.placeholder)
+            for ci, ch in enumerate(token.pattern):
+                if ch != "#":
+                    continue
+                before = prefix + token.placeholder[:ci]
+                cx = found + pymupdf.get_text_length(before, l1.FONT, FONT_SIZE) * k
+                cell = src[y0:y1, int(cx - DIGIT_SEARCH_PX) : int(cx + digits["0"].shape[1]
+                                                                   + DIGIT_SEARCH_PX)]
+                if cell.shape[1] < digits["0"].shape[1] or cell.shape[0] < digits["0"].shape[0]:
+                    break
+                ranked = sorted(
+                    ((cv2.matchTemplate(cell, t, cv2.TM_CCOEFF_NORMED).max(), d)
+                     for d, t in digits.items()),
+                    reverse=True,
+                )
+                if ranked[0][0] < MIN_MATCH or ranked[0][0] - ranked[1][0] < DIGIT_MIN_MARGIN:
+                    break
+                value[ci] = ranked[0][1]
+            else:
+                out[token.index] = "".join(value)
+    return out
+
+
 def _decode(scores: dict[int, float]) -> tuple[int, int] | None:
     try:
         return decode_scores(scores)
@@ -231,6 +317,7 @@ class NaskahResult:
     layer2_decoded: tuple[int, int] | None
     decoded: tuple[int, int] | None  # gabungan; None bila tak cukup atau bertentangan
     conflict: bool
+    tokens: dict[int, str]  # honey-token Lapis 3 yang terbaca, {indeks: nilai}
 
     @property
     def observed(self) -> int:
@@ -246,7 +333,11 @@ def analyse_aligned(aligned: np.ndarray, delta_pt: float, dpi: int) -> NaskahRes
     chosen = read_variants(flat, tracked, dpi)
     template = demo_template()
     l2 = variant_scores(template, chosen)
-    layout = layout_for(tuple(chosen.get(i, 0) for i in range(len(template.slots))))
+    tokens = read_tokens(flat, tracked, chosen, dpi)
+    layout = layout_for(
+        tuple(chosen.get(i, 0) for i in range(len(template.slots))),
+        tuple(tokens.get(t.index, t.placeholder) for t in template.tokens),
+    )
     l1_scores = vx.measure_slot_scores(aligned, layout, delta_pt, dpi, geom, tracked)
 
     combined = {**l1_scores, **{n + L2_KEY_OFFSET: s for n, s in l2.items()}}
@@ -257,7 +348,7 @@ def analyse_aligned(aligned: np.ndarray, delta_pt: float, dpi: int) -> NaskahRes
     )
     return NaskahResult(
         aligned, l1_scores, l2, layout.total_slots, template.capacity_bits,
-        d1, d2, None if conflict else dc, conflict,
+        d1, d2, None if conflict else dc, conflict, tokens,
     )
 
 

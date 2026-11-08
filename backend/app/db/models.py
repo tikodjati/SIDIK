@@ -58,6 +58,25 @@ class Copy(Base):
 
     document: Mapped[Document] = relationship()
     recipient: Mapped[Recipient] = relationship()
+    tokens: Mapped[list["HoneyTokenRow"]] = relationship(
+        back_populates="copy", order_by="HoneyTokenRow.token_index"
+    )
+
+
+class HoneyTokenRow(Base):
+    """Honey-token Lapis 3: angka fiktif khusus satu salinan. `digits` (angka tanpa tanda baca)
+    unik global, jadi satu angka di bukti menunjuk tepat satu salinan."""
+
+    __tablename__ = "honey_tokens"
+    __table_args__ = (UniqueConstraint("copy_id", "token_index"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    copy_id: Mapped[int] = mapped_column(ForeignKey("copies.copy_id"), index=True)
+    token_index: Mapped[int] = mapped_column(Integer)
+    value: Mapped[str] = mapped_column(String(32))  # seperti tercetak, mis. "143.275"
+    digits: Mapped[str] = mapped_column(String(32), unique=True)  # "143275"
+
+    copy: Mapped[Copy] = relationship(back_populates="tokens")
 
 
 class LedgerEntry(Base):

@@ -5,6 +5,8 @@
 # Sintaks: {varian1|varian2} = 1 bit, {varian1|varian2|varian3|varian4} = 2 bit.
 # Aturan (diperiksa otomatis saat dimuat): tiap varian = satu kata, unik di seluruh naskah,
 # tidak muncul di teks tetap, dan tidak mirip kata lain.
+# Honey-token Lapis 3: [[pola]] = angka fiktif per salinan; '#' diganti digit acak saat salinan
+# diterbitkan (min. 5 '#'), karakter lain tetap. Contoh: [[1##.###]] -> 143.275.
 KOMANDO DAERAH MILITER JAYA/JAYAKARTA
 MARKAS KOMANDO
 SURAT TELEGRAM PANGLIMA KODAM JAYA
@@ -27,7 +29,7 @@ c. Insiden kebocoran dokumen {mengakibatkan|mendatangkan} kerugian besar bagi {k
 3. TUGAS
 a. Kodam Jaya {memberlakukan|menerapkan} penjagaan tingkat satu {guna|demi} {menjamin|memastikan} keselamatan jaringan komunikasi.
 b. Para Danrem dan Dandim {memerintahkan|menugaskan|menginstruksikan|mewajibkan} {seluruh|segenap} jajaran untuk {meningkatkan|mengintensifkan|memperkuat|memperketat} {kesiapan|kesiapsiagaan} {tiap|setiap} unsur tanggap insiden siber.
-c. {Satuan|Kesatuan} wajib {mengawasi|memantau|memonitor|mengamati} lalu lintas jaringan militer tanpa henti.
+c. {Satuan|Kesatuan} wajib {mengawasi|memantau|memonitor|mengamati} lalu lintas jaringan militer tanpa henti pada frekuensi [[1##.###]] MHz.
 d. Semua anomali jaringan harus {segera|secepatnya|sesegera|seketika} disampaikan kepada Puskodal Kodam Jaya.
 e. {Pelaksanaan|Penyelenggaraan} tugas ini {sesuai|selaras} dengan {ketentuan|peraturan} yang berlaku.
 
@@ -40,21 +42,21 @@ e. Perwira staf {menyusun|merumuskan|merancang|menyiapkan} rencana kontinjensi {
 f. {Koordinasi|Sinkronisasi} antarsatuan {diharapkan|dimohon} berjalan {lengkap|utuh} dan {tepat|akurat}.
 
 5. LANGKAH
-a. Teknisi {memeriksa|meneliti|memverifikasi|menelaah} perangkat komunikasi sebelum pertemuan {resmi|formal}.
-b. Penjaga {mencatat|membukukan|mendata|menginventarisasi} semua akses ke ruang arsip.
+a. Teknisi {memeriksa|meneliti|memverifikasi|menelaah} perangkat komunikasi REG-AL-[[#####]] sebelum pertemuan {resmi|formal}.
+b. Penjaga {mencatat|membukukan|mendata|menginventarisasi} semua akses ke ruang arsip blok [[#####]].
 c. Komandan {mengamankan|melindungi|menjaga|mengawal} {perlengkapan|peralatan} sandi {khususnya|terutama} pada malam hari.
-d. {Laporan|Pemberitaan} dikirim melalui jalur komunikasi yang {singkat|ringkas} dan {jelas|gamblang}.
+d. {Laporan|Pemberitaan} dikirim melalui jalur komunikasi KOM-[[#####]] yang {singkat|ringkas} dan {jelas|gamblang}.
 e. Bintara {mengirimkan|menyampaikan|meneruskan|menyerahkan} bukti kejadian kepada pihak berwenang.
 
 6. LARANGAN
 a. Pelaku {pelanggaran|penyimpangan} dikenai {sanksi|hukuman} menurut undang-undang militer.
 b. Komandan {mengendalikan|mengontrol|mengelola|mengatur} {kegiatan|aktivitas} tersebut secara {menyeluruh|komprehensif} dan {berkelanjutan|kontinu}.
 c. Kompi {mendahulukan|memprioritaskan} {petunjuk|pedoman} komandan {apabila|jika} terjadi perbedaan penafsiran.
-d. Dokumen lama {dimusnahkan|dihancurkan} lewat prosedur khusus.
+d. Dokumen lama {dimusnahkan|dihancurkan} lewat prosedur khusus PK-[[#####]].
 e. Pihak yang {mengungkapkan|membeberkan|membocorkan|mempublikasikan} isi naskah akan diproses hukum.
 
 7. HAL LAIN
-a. {Perintah|Instruksi} ini {diterima|diperoleh} oleh {wilayah|kawasan} tertentu {pertama|awal} kali pagi hari.
+a. {Perintah|Instruksi} ini {diterima|diperoleh} oleh {wilayah|kawasan} tertentu di titik [[06.#####]] LS {pertama|awal} kali pagi hari.
 b. {Pegawai|Karyawan} {menggunakan|memanfaatkan} saluran yang {dibatasi|dikurangi} dan tidak {dihindari|dijauhi}.
 c. {Menimbang|Memandang} situasi, agenda {terakhir|akhir} digelar {sekarang|kini}.
 d. Staf {memperhatikan|mencermati} hal-hal yang {berkaitan|bersangkutan} dengan keselamatan.

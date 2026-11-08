@@ -218,7 +218,7 @@ def _perspective_from_lines(
         ts, td = _normalizer(src), _normalizer(dst)
         sn, dn = _apply(ts, src), _apply(td, dst)
         rows = []
-        for j, ((u, v), (x, y)) in enumerate(zip(sn, dn)):
+        for j, ((u, v), (x, y)) in enumerate(zip(sn, dn, strict=True)):
             wx = 1.0 if j % 2 == 0 else 0.2  # ujung kanan: posisi mendatar kurang pasti
             rows.append(wx * np.array([u, v, 1, 0, 0, 0, -x * u, -x * v, -x]))
             rows.append(np.array([0, 0, 0, u, v, 1, -y * u, -y * v, -y]))
@@ -522,7 +522,8 @@ def track_lines(
             step = (layout.baselines[li] - layout.baselines[prev_line]) * k * geom.scale
             expect = prev + step * ratio
         found = _line_rows(flat, expect, geom.scale, layout, dpi)
-        if found is not None and abs(found[1] - expect) > LINE_GATE * layout.leading * k * geom.scale:
+        gate = LINE_GATE * layout.leading * k * geom.scale
+        if found is not None and abs(found[1] - expect) > gate:
             found = None  # baris terpotong di tepi foto, atau tinta baris tetangga: abaikan
         if found is None:
             prev, prev_line = expect, li
@@ -613,7 +614,8 @@ def align_candidates(
 ) -> Iterator[np.ndarray]:
     """Kandidat foto yang sudah diselaraskan ke tata letak, terbaik dulu.
 
-    Kandidat pelurusan (4 cara awal, termasuk potongan sebagian halaman, x 4 rotasi) dinilai dengan ECC sampai resolusi 1/8
+    Kandidat pelurusan (4 cara awal, termasuk potongan sebagian halaman, x 4 rotasi)
+    dinilai dengan ECC sampai resolusi 1/8
     (affine 1/16, lalu homografi 1/16 dan 1/8; tahap yang gagal konvergen dilewati).
     Penilaian di 1/16 saja terbukti menyingkirkan kandidat yang benar. `max_tries` teratas
     diselaraskan penuh, satu per satu saat diminta (pemanggil berhenti begitu terdekode).

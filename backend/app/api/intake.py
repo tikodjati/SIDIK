@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN, INVESTIGATOR, require_roles
 from app.config import settings
+from app.core import layer3_honeytoken as l3
 from app.core import naskah
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, extract_scores
@@ -20,6 +21,7 @@ from app.models.registry_models import (
     IntakeTextRequest,
     LayerReading,
     LedgerRef,
+    TokenHit,
 )
 
 router = APIRouter(prefix="/api/v1/intake", tags=["intake"])
@@ -27,6 +29,9 @@ _investigator = require_roles(ADMIN, INVESTIGATOR)
 
 NOTES = {
     "IDENTIFIED": "Atribusi menunjukkan salinan yang diterbitkan, bukan putusan bersalah.",
+    "COLLUSION_SUSPECTED": "Bukti menunjuk lebih dari satu salinan, masing-masing dengan bukti "
+    "cukup (indikasi kolusi/penggabungan salinan). Atribusi menunjukkan salinan yang diterbitkan, "
+    "bukan putusan bersalah.",
     "UNREGISTERED": "Payload terbaca tetapi tidak terdaftar: tidak ada atribusi.",
     "CONFLICTING_EVIDENCE": "Lapis 1 dan Lapis 2 menunjuk salinan berbeda (indikasi manipulasi): "
     "tidak ada atribusi.",
@@ -35,6 +40,27 @@ NOTES = {
 PHOTO_DPI = 300
 MAX_PHOTO_SIDE = 4000  # foto lebih besar diperkecil dulu: tak menambah akurasi, hanya waktu
 PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def _attribution(copy: Copy) -> Attribution:
+    return Attribution(
+        copy_id=copy.copy_id,
+        recipient=copy.recipient,
+        document_nomor=copy.document.nomor,
+        document_judul=copy.document.judul,
+        klasifikasi=copy.document.klasifikasi,
+        issued_at=copy.issued_at,
+    )
+
+
+def _token_layer(hits: list[l3.TokenHit]) -> LayerReading:
+    found = {(h.copy_id, h.token_index) for h in hits}
+    return LayerReading(
+        layer="L3_TOKEN",
+        observed_bits=len(found),
+        total_bits=len(demo_template().tokens),
+        decoded_alone=bool(l3.judge(hits, None).identified),
+    )
 
 
 def _attribute(
@@ -49,20 +75,29 @@ def _attribute(
     case_ref: str | None,
     layers: list[LayerReading] | None = None,
     conflict: bool = False,
+    hits: list[l3.TokenHit] | None = None,
 ) -> IntakeResult:
-    """Petakan hasil dekode ke salinan terdaftar dan catat pemeriksaan di ledger.
+    """Petakan hasil dekode Lapis 1/2 dan honey-token Lapis 3 ke salinan terdaftar, lalu catat
+    pemeriksaan di ledger.
 
-    Dua pagar anti salah-tuduh: dekoder menolak bukti rusak berat, dan `copy_id` hasil dekode
-    wajib terdaftar. Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya
-    hash bukti, bukan isinya."""
+    Pagar anti salah-tuduh: dekoder menolak bukti rusak berat, `copy_id` hasil dekode wajib
+    terdaftar, dan honey-token baru menunjuk salinan bila >= 2 tokennya cocok (atau dikonfirmasi
+    lapis lain). Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya hash
+    bukti, bukan isinya."""
+    hits = hits or []
     copy_id = decoded[0] if decoded else None
-    copy = session.get(Copy, copy_id) if copy_id is not None else None
+    decoded_copy = session.get(Copy, copy_id) if copy_id is not None else None
+    verdict = l3.judge(hits, decoded_copy.copy_id if decoded_copy else None)
+    copies = [session.get(Copy, c) for c in verdict.identified]
     if conflict:
-        status = "CONFLICTING_EVIDENCE"
-    elif copy is not None:
+        status, copies = "CONFLICTING_EVIDENCE", []
+    elif len(copies) > 1:
+        status = "COLLUSION_SUSPECTED"
+    elif copies:
         status = "IDENTIFIED"
     else:
         status = "UNREGISTERED" if decoded else "INSUFFICIENT_FORENSIC_ARTIFACTS"
+    attributed = {c.copy_id for c in copies}
     entry = append_event(
         session,
         signer,
@@ -70,32 +105,41 @@ def _attribute(
         {
             "evidence_sha256": hashlib.sha256(evidence).hexdigest(),
             "status": status,
-            "copy_id": copy_id,
+            "copy_id": copies[0].copy_id if len(copies) == 1 else copy_id,
             "observed_bits": observed,
             "total_bits": total,
             "case_ref": case_ref,
             **({"layers": [r.model_dump() for r in layers]} if layers else {}),
+            **({"copy_ids": sorted(attributed)} if len(copies) > 1 else {}),
+            **(
+                {"tokens": [{"index": h.token_index, "copy_id": h.copy_id} for h in hits]}
+                if hits else {}
+            ),
         },
         user.username,
     )
     session.commit()
 
-    attribution = None
-    if copy is not None:
-        attribution = Attribution(
-            copy_id=copy.copy_id,
-            recipient=copy.recipient,
-            document_nomor=copy.document.nomor,
-            document_judul=copy.document.judul,
-            klasifikasi=copy.document.klasifikasi,
-            issued_at=copy.issued_at,
-        )
+    token_hits = []
+    for h in hits:
+        owner = session.get(Copy, h.copy_id)
+        token_hits.append(TokenHit(
+            token_index=h.token_index,
+            value=h.value,
+            copy_id=h.copy_id,
+            recipient_nama=owner.recipient.nama,
+            recipient_nrp=owner.recipient.nrp,
+            confirmed=h.copy_id in attributed,
+        ))
+    attributions = [_attribution(c) for c in copies]
     return IntakeResult(
         status=status,
         observed_bits=observed,
         total_bits=total,
         layers=layers or [],
-        attribution=attribution,
+        attribution=attributions[0] if status == "IDENTIFIED" else None,
+        attributions=attributions,
+        tokens=token_hits,
         ledger=LedgerRef(seq=entry.seq, entry_hash=entry.entry_hash),
         note=NOTES[status],
     )
@@ -108,16 +152,27 @@ def intake_text(
     signer: Signer = Depends(get_signer),
     user: User = Depends(_investigator),
 ) -> IntakeResult:
-    """Analisis teks bukti (ketik ulang / salinan teks) lewat Lapis 2."""
+    """Analisis teks bukti (ketik ulang / salinan teks / parafrase) lewat Lapis 2 (pilihan kata)
+    dan Lapis 3 (honey-token: angka fiktif khusus salinan)."""
     template = demo_template()
     scores = extract_scores(template, body.text)
     try:
         decoded = decode_scores(scores)
     except PayloadDecodeError:
         decoded = None
+    hits = l3.lookup(session, l3.numbers_in(body.text))
+    layers = [
+        LayerReading(
+            layer="L2_KATA",
+            observed_bits=len(scores),
+            total_bits=template.capacity_bits,
+            decoded_alone=decoded is not None,
+        ),
+        _token_layer(hits),
+    ]
     return _attribute(
         session, signer, user, "LEAK_INTAKE_TEXT", decoded, body.text.encode("utf-8"),
-        len(scores), template.capacity_bits, body.case_ref,
+        len(scores), template.capacity_bits, body.case_ref, layers=layers, hits=hits,
     )
 
 
@@ -146,9 +201,9 @@ def intake_photo(
     signer: Signer = Depends(get_signer),
     user: User = Depends(_investigator),
 ) -> IntakeResult:
-    """Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dibaca dari bentuk kata, lalu
-    pergeseran spasi (Lapis 1) diukur; bukti keduanya digabung. Bila tiap lapis menunjuk salinan
-    berbeda, hasilnya CONFLICTING_EVIDENCE.
+    """Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dan angka honey-token (Lapis 3)
+    dibaca dari bentuknya, lalu pergeseran spasi (Lapis 1) diukur; bukti Lapis 1 dan 2 digabung.
+    Bila keduanya menunjuk salinan berbeda, hasilnya CONFLICTING_EVIDENCE.
 
     Seluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama
     karena semua kandidat pelurusan dicoba."""
@@ -175,10 +230,12 @@ def intake_photo(
             decoded_alone=bool(found and found.layer2_decoded),
         ),
     ]
+    hits = l3.lookup(session, (l3.digits_of(v) for v in found.tokens.values())) if found else []
+    layers.append(_token_layer(hits))
     result = _attribute(
         session, signer, user, "LEAK_INTAKE_PHOTO", found.decoded if found else None, data,
         found.observed if found else 0, l1_total + l2_total, case_ref,
-        layers=layers, conflict=bool(found and found.conflict),
+        layers=layers, conflict=bool(found and found.conflict), hits=hits,
     )
     if found is not None:
         result.aligned_preview = _preview(found.aligned)

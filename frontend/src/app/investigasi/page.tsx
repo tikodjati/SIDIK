@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RequireRole, useAuth } from "@/components/AuthProvider";
 import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } from "@/components/ui";
 import {
+  type Attribution,
   type CopyRow,
   type IntakeResult,
   type LayerReading,
@@ -18,10 +19,16 @@ import { simulateLeak } from "@/lib/simulate";
 const LAYER_LABEL: Record<LayerReading["layer"], string> = {
   L1_SPASI: "Lapis 1 · spasi antar-kata",
   L2_KATA: "Lapis 2 · pilihan kata",
+  L3_TOKEN: "Lapis 3 · honey-token (angka fiktif)",
 };
 
 const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headline: string }> = {
   IDENTIFIED: { label: "TARGET TERIDENTIFIKASI", tone: "ok", headline: "Salinan teridentifikasi" },
+  COLLUSION_SUSPECTED: {
+    label: "INDIKASI KOLUSI",
+    tone: "warn",
+    headline: "Bukti menunjuk lebih dari satu salinan",
+  },
   UNREGISTERED: {
     label: "TIDAK TERDAFTAR",
     tone: "warn",
@@ -40,6 +47,27 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
 };
 
 type Mode = "foto" | "teks";
+
+function AttributionRows({ a }: { a: Attribution }) {
+  return (
+    <dl>
+      <Row label="Nama">{a.recipient.nama}</Row>
+      <Row label="Pangkat">{a.recipient.pangkat}</Row>
+      <Row label="NRP">
+        <span className="font-mono">{a.recipient.nrp}</span>
+      </Row>
+      <Row label="Jabatan">{a.recipient.jabatan}</Row>
+      <Row label="Satuan">{a.recipient.satuan}</Row>
+      <Row label="Naskah">
+        {a.document_nomor} · {a.klasifikasi}
+      </Row>
+      <Row label="Salinan diterbitkan">{formatTime(a.issued_at)}</Row>
+      <Row label="ID salinan">
+        <span className="font-mono">{hexId(a.copy_id)}</span>
+      </Row>
+    </dl>
+  );
+}
 
 function InvestigasiPanel() {
   const { user } = useAuth();
@@ -119,10 +147,10 @@ function InvestigasiPanel() {
 
         <div className="flex gap-2" role="tablist" aria-label="Jenis bukti">
           <button type="button" role="tab" aria-selected={mode === "foto"} className={tabClass("foto")} onClick={() => setMode("foto")}>
-            Foto / scan (Lapis 1 + 2)
+            Foto / scan (Lapis 1 + 2 + 3)
           </button>
           <button type="button" role="tab" aria-selected={mode === "teks"} className={tabClass("teks")} onClick={() => setMode("teks")}>
-            Teks / salin / ketik ulang (Lapis 2)
+            Teks / ketik ulang / parafrase (Lapis 2 + 3)
           </button>
         </div>
 
@@ -216,8 +244,8 @@ function InvestigasiPanel() {
           {busy && (
             <p className="animate-pulse font-mono text-sm text-accent">
               {resultMode === "foto"
-                ? "Meluruskan halaman, membaca pilihan kata, lalu mengukur spasi antar-kata…"
-                : "Membaca penanda semantik…"}{" "}
+                ? "Meluruskan halaman, membaca pilihan kata dan angka token, lalu mengukur spasi…"
+                : "Membaca pilihan kata dan mencari honey-token…"}{" "}
               {elapsed.toFixed(0)} dtk
             </p>
           )}
@@ -244,7 +272,7 @@ function InvestigasiPanel() {
                 </div>
                 <div className="h-2 rounded bg-background" role="progressbar" aria-valuenow={meter} aria-valuemin={0} aria-valuemax={100}>
                   <div
-                    className={`h-2 rounded ${result.status === "IDENTIFIED" ? "bg-accent" : "bg-danger"}`}
+                    className={`h-2 rounded ${result.attributions?.length ? "bg-accent" : "bg-danger"}`}
                     style={{ width: `${meter}%` }}
                   />
                 </div>
@@ -258,6 +286,7 @@ function InvestigasiPanel() {
                       <span className="flex items-center gap-2">
                         <span className="font-mono text-foreground/60">
                           {r.observed_bits} / {r.total_bits}
+                          {r.layer === "L3_TOKEN" ? " token" : " bit"}
                         </span>
                         <Badge tone={r.decoded_alone ? "ok" : "muted"}>
                           {r.decoded_alone ? "TERBACA" : "KURANG"}
@@ -268,23 +297,32 @@ function InvestigasiPanel() {
                 </ul>
               )}
 
-              {result.attribution && (
-                <dl>
-                  <Row label="Nama">{result.attribution.recipient.nama}</Row>
-                  <Row label="Pangkat">{result.attribution.recipient.pangkat}</Row>
-                  <Row label="NRP">
-                    <span className="font-mono">{result.attribution.recipient.nrp}</span>
-                  </Row>
-                  <Row label="Jabatan">{result.attribution.recipient.jabatan}</Row>
-                  <Row label="Satuan">{result.attribution.recipient.satuan}</Row>
-                  <Row label="Naskah">
-                    {result.attribution.document_nomor} · {result.attribution.klasifikasi}
-                  </Row>
-                  <Row label="Salinan diterbitkan">{formatTime(result.attribution.issued_at)}</Row>
-                  <Row label="ID salinan">
-                    <span className="font-mono">{hexId(result.attribution.copy_id)}</span>
-                  </Row>
-                </dl>
+              {result.attributions?.map((a, i) => (
+                <div key={a.copy_id} className={i > 0 ? "border-t border-border pt-3" : undefined}>
+                  {result.attributions!.length > 1 && (
+                    <p className="mb-1 font-mono text-xs font-bold text-accent">Salinan {i + 1}</p>
+                  )}
+                  <AttributionRows a={a} />
+                </div>
+              ))}
+
+              {result.tokens && result.tokens.length > 0 && (
+                <div>
+                  <p className="mb-1 text-xs text-foreground/60">Honey-token ditemukan di bukti</p>
+                  <ul className="space-y-1 text-xs">
+                    {result.tokens.map((t) => (
+                      <li key={`${t.copy_id}-${t.token_index}`} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono">{t.value}</span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-foreground/70">
+                            {t.recipient_nama} · <span className="font-mono">{t.recipient_nrp}</span>
+                          </span>
+                          <Badge tone={t.confirmed ? "ok" : "muted"}>{t.confirmed ? "TERKONFIRMASI" : "INDIKASI"}</Badge>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {result.aligned_preview && (
