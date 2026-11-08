@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { RequireRole } from "@/components/AuthProvider";
 import { Badge, Button, Card, ErrorNote, type Tone } from "@/components/ui";
 import { type LedgerEntry, type VerifyResult, listLedger, verifyLedger } from "@/lib/api";
-import { formatTime, parseBody, shortHash, summarize } from "@/lib/format";
+import { formatTime, isIntake, parseBody, shortHash, summarize } from "@/lib/format";
 
 function eventTone(event?: string): Tone {
-  if (event === "LEAK_INTAKE_TEXT") return "warn";
+  if (isIntake(event)) return "warn";
   if (event === "LOGIN_FAILED") return "danger";
-  return event === "COPY_ISSUED" ? "ok" : "muted";
+  return event === "COPY_ISSUED" || event === "COPY_EXPORTED" ? "ok" : "muted";
 }
 
 const loadLedger = () => Promise.all([listLedger(100), verifyLedger()]);
@@ -124,7 +124,9 @@ function AuditPanel() {
                     <Badge tone={eventTone(body?.event)}>
                       {body?.event ?? "?"}
                     </Badge>
-                    <span className="flex-1 text-foreground/80">{summarize(body)}</span>
+                    <span className="min-w-0 flex-1 break-words text-foreground/80 [overflow-wrap:anywhere]">
+                      {summarize(body)}
+                    </span>
                     <span className="text-xs text-foreground/60">
                       {body ? `${body.actor} · ${formatTime(body.at)}` : ""}
                     </span>

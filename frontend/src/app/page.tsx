@@ -15,7 +15,7 @@ import {
   listRecipients,
   verifyLedger,
 } from "@/lib/api";
-import { formatTime, parseBody, summarize } from "@/lib/format";
+import { formatTime, isIntake, parseBody, summarize } from "@/lib/format";
 
 type Registry = { recipients: number; documents: number; copies: number };
 type Audit = { ledger: LedgerEntry[]; verify: VerifyResult };
@@ -57,7 +57,7 @@ export default function Home() {
 
   if (!role) return null;
   const investigations =
-    audit?.ledger.filter((e) => parseBody(e)?.event === "LEAK_INTAKE_TEXT").length ?? 0;
+    audit?.ledger.filter((e) => isIntake(parseBody(e)?.event)).length ?? 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -112,7 +112,7 @@ export default function Home() {
                     <li key={entry.seq} className="py-2">
                       <span className="font-mono text-accent">#{entry.seq}</span>{" "}
                       <span className="font-bold">{body?.event}</span>
-                      <p className="text-foreground/80">{summarize(body)}</p>
+                      <p className="break-words text-foreground/80 [overflow-wrap:anywhere]">{summarize(body)}</p>
                       <p className="text-xs text-foreground/60">
                         {body ? `${body.actor} · ${formatTime(body.at)}` : ""}
                       </p>

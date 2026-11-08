@@ -26,15 +26,24 @@ export function parseBody(entry: LedgerEntry): LedgerBody | null {
   }
 }
 
+/** Peristiwa analisis bukti (teks dan foto) di buku besar. */
+export const isIntake = (event?: string) =>
+  event === "LEAK_INTAKE_TEXT" || event === "LEAK_INTAKE_PHOTO";
+
 export function summarize(body: LedgerBody | null): string {
   if (!body) return "(isi tidak terbaca)";
   const d = body.data;
   if (body.event === "COPY_ISSUED") {
     return `salinan ${hexId(Number(d.copy_id))} untuk NRP ${String(d.recipient_nrp)} (${String(d.document_nomor)})`;
   }
-  if (body.event === "LEAK_INTAKE_TEXT") {
+  if (body.event === "COPY_EXPORTED") {
+    return `PDF salinan ${hexId(Number(d.copy_id))} diunduh (${String(d.document_nomor)})`;
+  }
+  if (isIntake(body.event)) {
+    const channel = body.event === "LEAK_INTAKE_PHOTO" ? "foto" : "teks";
     const id = d.copy_id == null ? "tanpa ID" : hexId(Number(d.copy_id));
-    return `${String(d.status)} · ${id} · bit ${String(d.observed_bits)}/${String(d.total_bits)}`;
+    const ref = d.case_ref ? ` · perkara ${String(d.case_ref)}` : "";
+    return `${channel}: ${String(d.status)} · ${id} · ${String(d.observed_bits)}/${String(d.total_bits)}${ref}`;
   }
   if (body.event === "LOGIN_FAILED") {
     return `login gagal: ${String(d.username)}${d.locked ? " (akun dikunci)" : ""}`;
@@ -42,5 +51,5 @@ export function summarize(body: LedgerBody | null): string {
   if (typeof d.username === "string") {
     return d.role ? `${d.username} (${String(d.role)})` : d.username;
   }
-  return JSON.stringify(d);
+  return JSON.stringify(d); // peristiwa baru yang belum punya ringkasan; detail lengkap saat dibuka
 }
