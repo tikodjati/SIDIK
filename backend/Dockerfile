@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir ".[forensics]"
 COPY app ./app
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY scripts ./scripts
 
 EXPOSE 8000
 # Migrasi skema dijalankan sebelum API menerima trafik.

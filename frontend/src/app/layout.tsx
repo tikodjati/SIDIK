@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 import TacticalNav from "@/components/TacticalNav";
 
 export const metadata: Metadata = {
@@ -11,8 +12,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="id" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <TacticalNav />
-        <main className="flex-1 p-6">{children}</main>
+        <AuthProvider>
+          <TacticalNav />
+          <main className="flex-1 p-6">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

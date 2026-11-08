@@ -2,12 +2,18 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import ADMIN, INVESTIGATOR, require_roles
 from app.core.audit_ledger import Signer, get_signer, verify_chain
 from app.db import get_session
 from app.db.models import LedgerEntry
 from app.models.registry_models import LedgerEntryOut, VerifyOut
 
-router = APIRouter(prefix="/api/v1/ledger", tags=["ledger"])
+# Ledger memuat riwayat investigasi, jadi distributor tidak boleh membacanya.
+router = APIRouter(
+    prefix="/api/v1/ledger",
+    tags=["ledger"],
+    dependencies=[Depends(require_roles(ADMIN, INVESTIGATOR))],
+)
 
 
 @router.get("", response_model=list[LedgerEntryOut])

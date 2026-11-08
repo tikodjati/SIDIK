@@ -21,7 +21,7 @@ python -m scripts.layer2_cli watermark 1002 -o salinan_1002.txt
 
 Buka kedua berkas. Isinya sama, tetapi puluhan kata berbeda (mis. "Berdasarkan" vs "Merujuk", "serta" vs "beserta"). Itulah penanda: tiap kata varian mengodekan 1–2 bit dari ID salinan.
 
-(Pernah ingin lewat Swagger? Jalankan `python -m uvicorn app.main:app --reload`, buka http://localhost:8000/docs, pakai `POST /api/v1/layer2/watermark` dan `/extract`.)
+(Pernah ingin lewat Swagger? Jalankan `python -m uvicorn app.main:app --reload`, buka http://localhost:8000/docs, login dulu lewat `POST /api/v1/auth/login` sebagai admin, lalu pakai `POST /api/v1/layer2/watermark` dan `/extract`.)
 
 ## 2. Skenario uji
 

@@ -1,16 +1,18 @@
 import hashlib
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.deps import ADMIN, INVESTIGATOR, require_roles
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, extract_scores
 from app.core.payload import PayloadDecodeError, decode_scores
 from app.db import get_session
-from app.db.models import Copy
+from app.db.models import Copy, User
 from app.models.registry_models import Attribution, IntakeResult, IntakeTextRequest, LedgerRef
 
 router = APIRouter(prefix="/api/v1/intake", tags=["intake"])
+_investigator = require_roles(ADMIN, INVESTIGATOR)
 
 NOTES = {
     "IDENTIFIED": "Atribusi menunjukkan salinan yang diterbitkan, bukan putusan bersalah.",
@@ -24,7 +26,7 @@ def intake_text(
     body: IntakeTextRequest,
     session: Session = Depends(get_session),
     signer: Signer = Depends(get_signer),
-    actor: str = Header(default="anonim", alias="X-Actor"),
+    user: User = Depends(_investigator),
 ) -> IntakeResult:
     """Analisis teks bukti, petakan ke salinan terdaftar, dan catat investigasi di ledger.
 
@@ -56,7 +58,7 @@ def intake_text(
             "total_bits": template.capacity_bits,
             "case_ref": body.case_ref,
         },
-        actor,
+        user.username,
     )
     session.commit()
 

@@ -10,9 +10,13 @@ export type CopyRow = Schemas["CopyOut"];
 export type IntakeResult = Schemas["IntakeResult"];
 export type LedgerEntry = Schemas["LedgerEntryOut"];
 export type VerifyResult = Schemas["VerifyOut"];
+export type User = Schemas["UserOut"];
+export type UserInput = Schemas["UserCreate"];
+export type Role = User["role"];
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const ACTOR_KEY = "sidik.actor";
+/** Dipancarkan saat API menjawab 401, supaya AuthProvider mengarahkan ke halaman login. */
+export const UNAUTHORIZED_EVENT = "sidik:unauthorized";
 
 export class ApiError extends Error {
   constructor(
@@ -23,33 +27,20 @@ export class ApiError extends Error {
   }
 }
 
-/** Nama petugas yang dikirim sebagai X-Actor dan tercatat di buku besar audit. */
-export function getActor(): string {
-  try {
-    return localStorage.getItem(ACTOR_KEY) || "anonim";
-  } catch {
-    return "anonim";
-  }
-}
-
-export function setActor(name: string): void {
-  try {
-    localStorage.setItem(ACTOR_KEY, name);
-  } catch {
-    /* penyimpanan diblokir: nama petugas tidak diingat antar sesi */
-  }
-}
-
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       cache: "no-store",
+      credentials: "include", // cookie sesi HttpOnly
       ...init,
-      headers: { "Content-Type": "application/json", "X-Actor": getActor(), ...init.headers },
+      headers: { "Content-Type": "application/json", ...init.headers },
     });
   } catch {
     throw new ApiError("Tidak dapat terhubung ke server API.", 0);
+  }
+  if (res.status === 401 && !path.startsWith("/api/v1/auth/")) {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
@@ -62,12 +53,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new ApiError(detail, res.status);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
 const post = <T>(path: string, body: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body) });
 
+export const login = (username: string, password: string) =>
+  post<User>("/api/v1/auth/login", { username, password });
+export const logout = () => post<void>("/api/v1/auth/logout", {});
+export const getMe = () => request<User>("/api/v1/auth/me");
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  post<void>("/api/v1/auth/change-password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+export const listUsers = () => request<User[]>("/api/v1/users");
+export const createUser = (body: UserInput) => post<User>("/api/v1/users", body);
+export const setUserActive = (id: number, isActive: boolean) =>
+  request<User>(`/api/v1/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: isActive }),
+  });
 export const getHealth = () => request<{ status: string }>("/health");
 export const listRecipients = () => request<Recipient[]>("/api/v1/recipients");
 export const createRecipient = (body: RecipientInput) => post<Recipient>("/api/v1/recipients", body);

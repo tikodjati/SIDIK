@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.deps import ADMIN, INVESTIGATOR, require_roles
 from app.core.layer2_semantic import demo_template, encode_text, extract_scores
 from app.core.payload import PayloadDecodeError, decode_scores, encode_payload
 from app.models.layer2_models import (
@@ -12,7 +13,10 @@ from app.models.layer2_models import (
 router = APIRouter(prefix="/api/v1/layer2", tags=["layer2-semantic"])
 
 
-@router.post("/watermark", response_model=WatermarkResponse)
+# Watermark bebas ID bisa dipakai memalsukan bukti, jadi hanya admin.
+@router.post(
+    "/watermark", response_model=WatermarkResponse, dependencies=[Depends(require_roles(ADMIN))]
+)
 def watermark(req: WatermarkRequest) -> WatermarkResponse:
     """Render naskah demo dengan varian frasa untuk satu salinan (tanpa DB; registri menyusul)."""
     template = demo_template()
@@ -22,7 +26,11 @@ def watermark(req: WatermarkRequest) -> WatermarkResponse:
     )
 
 
-@router.post("/extract", response_model=ExtractResponse)
+@router.post(
+    "/extract",
+    response_model=ExtractResponse,
+    dependencies=[Depends(require_roles(ADMIN, INVESTIGATOR))],
+)
 def extract(req: ExtractRequest) -> ExtractResponse:
     """Baca identitas salinan dari teks bukti; menolak (tidak menebak) bila bukti tak cukup."""
     template = demo_template()

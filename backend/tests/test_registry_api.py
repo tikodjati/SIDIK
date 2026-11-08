@@ -22,11 +22,9 @@ def _setup(client, recipient=RECIPIENT):
     return r, d
 
 
-def _issue(client, document_id, recipient_id, actor=None):
-    headers = {"X-Actor": actor} if actor else {}
+def _issue(client, document_id, recipient_id):
     res = client.post(
-        f"/api/v1/documents/{document_id}/copies", json={"recipient_id": recipient_id},
-        headers=headers,
+        f"/api/v1/documents/{document_id}/copies", json={"recipient_id": recipient_id}
     )
     assert res.status_code == 201, res.text
     return res.json()
@@ -83,11 +81,12 @@ def test_ledger_never_stores_the_evidence_text_only_its_hash(client):
     assert body["event"] == "LEAK_INTAKE_TEXT" and body["data"]["case_ref"] == "K1"
 
 
-def test_actor_header_is_recorded(client):
+def test_logged_in_user_is_recorded_as_actor(client):
     r, d = _setup(client)
-    _issue(client, d["id"], r["id"], actor="Mayor Doni")
-    body = json.loads(client.get("/api/v1/ledger").json()[0]["body"])
-    assert body["actor"] == "Mayor Doni" and body["event"] == "COPY_ISSUED"
+    _issue(client, d["id"], r["id"])
+    entries = [json.loads(e["body"]) for e in client.get("/api/v1/ledger").json()]
+    issued = next(b for b in entries if b["event"] == "COPY_ISSUED")
+    assert issued["actor"] == "admin"
 
 
 def test_copy_ids_are_random_distinct_and_bound_to_recipients(client):
@@ -114,13 +113,13 @@ def test_verify_endpoint_ok_then_detects_database_tampering(client, engine):
     _issue(client, d["id"], r["id"])
     _intake(client, "teks bebas tanpa varian")
     ok = client.get("/api/v1/ledger/verify").json()
-    assert ok["ok"] and ok["entries"] == 2
+    assert ok["ok"] and ok["entries"] == 3  # login, penerbitan salinan, intake
 
     with engine.begin() as conn:  # admin DB mengubah catatan penerbitan
         conn.execute(sql("UPDATE ledger_entries SET body = replace(body, 'COPY_ISSUED', 'X') "
-                         "WHERE seq = 1"))
+                         "WHERE seq = 2"))
     bad = client.get("/api/v1/ledger/verify").json()
-    assert not bad["ok"] and bad["bad_seq"] == 1
+    assert not bad["ok"] and bad["bad_seq"] == 2
 
 
 def test_lists_documents_and_copies_with_names(client):
@@ -149,4 +148,4 @@ def test_ledger_can_be_listed_newest_first(client):
     _issue(client, d["id"], r["id"])
     _intake(client, "teks bebas")
     seqs = [e["seq"] for e in client.get("/api/v1/ledger?newest_first=true").json()]
-    assert seqs == [2, 1]
+    assert seqs == [3, 2, 1]

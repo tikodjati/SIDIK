@@ -6,6 +6,371 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Pesan gagal dan waktu responsnya sama untuk semua sebab, supaya akun tak bisa ditebak.\n\nSaat akun terkunci tak ada entri ledger baru, sehingga serangan menebak sandi tidak bisa\nmembanjiri ledger: paling banyak MAX_FAILED_LOGINS entri per LOCK_MINUTES per akun.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password",
+        "description": "Ganti sandi sendiri dan cabut semua sesi: setelah ini admin tak lagi tahu sandinya,\njadi nama pelaku di ledger benar-benar mewakili pemilik akun.",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User",
+        "operationId": "create_user_api_v1_users_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Set Active",
+        "description": "Aktifkan/nonaktifkan akun. Menonaktifkan langsung mencabut semua sesinya. Admin tak bisa\nmenonaktifkan dirinya sendiri, jadi selalu tersisa minimal satu admin aktif.",
+        "operationId": "set_active_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActiveUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/layer2/watermark": {
       "post": {
         "tags": [
@@ -14,15 +379,33 @@
         "summary": "Watermark",
         "description": "Render naskah demo dengan varian frasa untuk satu salinan (tanpa DB; registri menyusul).",
         "operationId": "watermark_api_v1_layer2_watermark_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/WatermarkRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -56,15 +439,33 @@
         "summary": "Extract",
         "description": "Baca identitas salinan dari teks bukti; menolak (tidak menebak) bila bukti tak cukup.",
         "operationId": "extract_api_v1_layer2_extract_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ExtractRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -91,44 +492,39 @@
       }
     },
     "/api/v1/recipients": {
-      "get": {
-        "tags": [
-          "registry"
-        ],
-        "summary": "List Recipients",
-        "operationId": "list_recipients_api_v1_recipients_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/RecipientOut"
-                  },
-                  "type": "array",
-                  "title": "Response List Recipients Api V1 Recipients Get"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "registry"
         ],
         "summary": "Create Recipient",
         "operationId": "create_recipient_api_v1_recipients_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecipientIn"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -152,47 +548,93 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/documents": {
+      },
       "get": {
         "tags": [
           "registry"
         ],
-        "summary": "List Documents",
-        "operationId": "list_documents_api_v1_documents_get",
+        "summary": "List Recipients",
+        "operationId": "list_recipients_api_v1_recipients_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/DocumentOut"
-                  },
                   "type": "array",
-                  "title": "Response List Documents Api V1 Documents Get"
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientOut"
+                  },
+                  "title": "Response List Recipients Api V1 Recipients Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
         }
-      },
+      }
+    },
+    "/api/v1/documents": {
       "post": {
         "tags": [
           "registry"
         ],
         "summary": "Create Document",
         "operationId": "create_document_api_v1_documents_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DocumentIn"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -201,6 +643,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_api_v1_documents_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response List Documents Api V1 Documents Get"
                 }
               }
             }
@@ -225,17 +718,45 @@
         ],
         "summary": "List Copies",
         "operationId": "list_copies_api_v1_copies_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/CopyOut"
                   },
-                  "type": "array",
                   "title": "Response List Copies Api V1 Copies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -249,7 +770,7 @@
           "registry"
         ],
         "summary": "Copy Text",
-        "description": "Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin\nyang seharusnya mengaksesnya begitu RBAC ada.",
+        "description": "Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin.",
         "operationId": "copy_text_api_v1_copies__copy_id__text_get",
         "parameters": [
           {
@@ -259,6 +780,22 @@
             "schema": {
               "type": "integer",
               "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
             }
           }
         ],
@@ -305,13 +842,19 @@
             }
           },
           {
-            "name": "X-Actor",
-            "in": "header",
+            "name": "sidik_session",
+            "in": "cookie",
             "required": false,
             "schema": {
-              "type": "string",
-              "default": "anonim",
-              "title": "X-Actor"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
             }
           }
         ],
@@ -359,13 +902,19 @@
         "operationId": "intake_text_api_v1_intake_text_post",
         "parameters": [
           {
-            "name": "X-Actor",
-            "in": "header",
+            "name": "sidik_session",
+            "in": "cookie",
             "required": false,
             "schema": {
-              "type": "string",
-              "default": "anonim",
-              "title": "X-Actor"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
             }
           }
         ],
@@ -443,6 +992,22 @@
               "default": false,
               "title": "Newest First"
             }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
           }
         ],
         "responses": {
@@ -481,6 +1046,24 @@
         "summary": "Verify",
         "description": "Verifikasi seluruh rantai (hash, urutan, tanda tangan). Catat `head_hash` secara berkala\ndi luar sistem untuk mendeteksi pemotongan ekor rantai.",
         "operationId": "verify_api_v1_ledger_verify_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -488,6 +1071,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -560,6 +1153,28 @@
           "issued_at"
         ],
         "title": "Attribution"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 10,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
       },
       "CopyIssued": {
         "properties": {
@@ -970,6 +1585,28 @@
         ],
         "title": "LedgerRef"
       },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
       "RecipientIn": {
         "properties": {
           "nrp": {
@@ -1060,6 +1697,95 @@
           "id"
         ],
         "title": "RecipientOut"
+      },
+      "UserActiveUpdate": {
+        "properties": {
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_active"
+        ],
+        "title": "UserActiveUpdate"
+      },
+      "UserCreate": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9._-]{3,32}$",
+            "title": "Username"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "distributor",
+              "investigator"
+            ],
+            "title": "Role"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 10,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "full_name",
+          "role",
+          "password"
+        ],
+        "title": "UserCreate"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "distributor",
+              "investigator"
+            ],
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "full_name",
+          "role",
+          "is_active"
+        ],
+        "title": "UserOut"
       },
       "ValidationError": {
         "properties": {

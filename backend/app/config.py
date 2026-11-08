@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     )
     data_dir: str = str(Path(__file__).resolve().parents[2] / "data")
     cors_origins: list[str] = ["http://localhost:3000"]
+    session_hours: int = 8
+    # Wajib true bila dilayani lewat HTTPS; false hanya untuk http://localhost saat pengembangan.
+    cookie_secure: bool = False
 
 
 settings = Settings()

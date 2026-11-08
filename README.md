@@ -22,7 +22,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
-API: http://localhost:8000/docs · Web: http://localhost:3000
+Buat akun demo (sekali saja; kredensial di `data/keys/demo_users.txt`):
+
+```bash
+docker compose exec api python -m scripts.users seed-demo
+```
+
+API: http://localhost:8000/docs · Web: http://localhost:3000 · Peran dan akun: [docs/AUTENTIKASI_RBAC.md](docs/AUTENTIKASI_RBAC.md)
 
 Pengembangan lokal tanpa Docker:
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RequireRole, useAuth } from "@/components/AuthProvider";
 import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } from "@/components/ui";
 import { type CopyRow, type IntakeResult, getCopyText, intakeText, listCopies } from "@/lib/api";
 import { formatTime, hexId, shortHash } from "@/lib/format";
@@ -20,7 +21,9 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
   },
 };
 
-export default function InvestigasiPage() {
+function InvestigasiPanel() {
+  const { user } = useAuth();
+  const canSimulate = user?.role === "admin"; // teks salinan hanya boleh dibaca admin
   const [text, setText] = useState("");
   const [caseRef, setCaseRef] = useState("");
   const [result, setResult] = useState<IntakeResult | null>(null);
@@ -34,10 +37,11 @@ export default function InvestigasiPage() {
   const [typos, setTypos] = useState(true);
 
   useEffect(() => {
+    if (!canSimulate) return;
     listCopies()
       .then(setCopies)
       .catch(() => setCopies([]));
-  }, []);
+  }, [canSimulate]);
 
   async function analyse() {
     setBusy(true);
@@ -91,7 +95,7 @@ export default function InvestigasiPage() {
           </div>
         </Card>
 
-        <Card title="Simulasi kebocoran (untuk demo)">
+        {canSimulate && <Card title="Simulasi kebocoran (untuk demo)">
           <div className="space-y-3">
             <Field label="Salinan yang bocor">
               <select className={inputClass} value={simCopy} onChange={(e) => setSimCopy(e.target.value)}>
@@ -127,7 +131,7 @@ export default function InvestigasiPage() {
               Buat teks bocor simulasi
             </Button>
           </div>
-        </Card>
+        </Card>}
       </div>
 
       <div className="lg:pt-12">
@@ -189,5 +193,13 @@ export default function InvestigasiPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function InvestigasiPage() {
+  return (
+    <RequireRole roles={["admin", "investigator"]}>
+      <InvestigasiPanel />
+    </RequireRole>
   );
 }

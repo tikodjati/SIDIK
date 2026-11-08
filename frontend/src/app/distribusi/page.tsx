@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { RequireRole } from "@/components/AuthProvider";
 import { Badge, Button, Card, ErrorNote, Field, inputClass } from "@/components/ui";
 import {
   type CopyIssued,
@@ -22,7 +23,7 @@ const KLASIFIKASI = ["BIASA", "TERBATAS", "KONFIDENSIAL", "RAHASIA", "SANGAT RAH
 const emptyRecipient = { nrp: "", nama: "", pangkat: "", jabatan: "", satuan: "" };
 const emptyDocument = { nomor: "", judul: "", klasifikasi: "RAHASIA" as (typeof KLASIFIKASI)[number] };
 
-export default function DistribusiPage() {
+function DistribusiPanel() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [copies, setCopies] = useState<CopyRow[]>([]);
@@ -248,5 +249,13 @@ export default function DistribusiPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function DistribusiPage() {
+  return (
+    <RequireRole roles={["admin", "distributor"]}>
+      <DistribusiPanel />
+    </RequireRole>
   );
 }

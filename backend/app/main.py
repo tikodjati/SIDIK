@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import intake, layer2, ledger, registry
+from app.api import auth, intake, layer2, ledger, registry, users
 from app.config import settings
 
 app = FastAPI(
@@ -13,10 +13,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(layer2.router)
 app.include_router(registry.router)
 app.include_router(intake.router)

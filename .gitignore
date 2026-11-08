@@ -15,6 +15,7 @@ desktop.ini
 *.pem
 *.key
 *.p12
+data/keys/
 
 # Python & Virtual Environments
 __pycache__/

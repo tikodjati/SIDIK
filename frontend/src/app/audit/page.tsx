@@ -1,13 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Card, ErrorNote } from "@/components/ui";
+import { RequireRole } from "@/components/AuthProvider";
+import { Badge, Button, Card, ErrorNote, type Tone } from "@/components/ui";
 import { type LedgerEntry, type VerifyResult, listLedger, verifyLedger } from "@/lib/api";
 import { formatTime, parseBody, shortHash, summarize } from "@/lib/format";
 
+function eventTone(event?: string): Tone {
+  if (event === "LEAK_INTAKE_TEXT") return "warn";
+  if (event === "LOGIN_FAILED") return "danger";
+  return event === "COPY_ISSUED" ? "ok" : "muted";
+}
+
 const loadLedger = () => Promise.all([listLedger(100), verifyLedger()]);
 
-export default function AuditPage() {
+function AuditPanel() {
   const [entries, setEntries] = useState<LedgerEntry[] | null>(null);
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +121,7 @@ export default function AuditPage() {
                     className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-left text-sm"
                   >
                     <span className="w-10 font-mono text-accent">#{entry.seq}</span>
-                    <Badge tone={body?.event === "LEAK_INTAKE_TEXT" ? "warn" : "ok"}>
+                    <Badge tone={eventTone(body?.event)}>
                       {body?.event ?? "?"}
                     </Badge>
                     <span className="flex-1 text-foreground/80">{summarize(body)}</span>
@@ -150,5 +157,13 @@ export default function AuditPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function AuditPage() {
+  return (
+    <RequireRole roles={["admin", "investigator"]}>
+      <AuditPanel />
+    </RequireRole>
   );
 }

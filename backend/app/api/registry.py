@@ -1,15 +1,16 @@
 import secrets
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.deps import ADMIN, DISTRIBUTOR, require_roles
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, encode_text
 from app.core.payload import encode_payload
 from app.db import get_session
-from app.db.models import Copy, Document, Recipient
+from app.db.models import Copy, Document, Recipient, User
 from app.models.registry_models import (
     CopyIssued,
     CopyOut,
@@ -23,8 +24,12 @@ from app.models.registry_models import (
 
 router = APIRouter(prefix="/api/v1", tags=["registry"])
 
+_staff = require_roles(ADMIN, DISTRIBUTOR)
 
-@router.post("/recipients", response_model=RecipientOut, status_code=201)
+
+@router.post(
+    "/recipients", response_model=RecipientOut, status_code=201, dependencies=[Depends(_staff)]
+)
 def create_recipient(body: RecipientIn, session: Session = Depends(get_session)) -> Recipient:
     recipient = Recipient(**body.model_dump())
     session.add(recipient)
@@ -36,12 +41,14 @@ def create_recipient(body: RecipientIn, session: Session = Depends(get_session))
     return recipient
 
 
-@router.get("/recipients", response_model=list[RecipientOut])
+@router.get("/recipients", response_model=list[RecipientOut], dependencies=[Depends(_staff)])
 def list_recipients(session: Session = Depends(get_session)) -> list[Recipient]:
     return list(session.scalars(select(Recipient).order_by(Recipient.id)))
 
 
-@router.post("/documents", response_model=DocumentOut, status_code=201)
+@router.post(
+    "/documents", response_model=DocumentOut, status_code=201, dependencies=[Depends(_staff)]
+)
 def create_document(body: DocumentIn, session: Session = Depends(get_session)) -> Document:
     document = Document(**body.model_dump())
     session.add(document)
@@ -53,12 +60,12 @@ def create_document(body: DocumentIn, session: Session = Depends(get_session)) -
     return document
 
 
-@router.get("/documents", response_model=list[DocumentOut])
+@router.get("/documents", response_model=list[DocumentOut], dependencies=[Depends(_staff)])
 def list_documents(session: Session = Depends(get_session)) -> list[Document]:
     return list(session.scalars(select(Document).order_by(Document.id)))
 
 
-@router.get("/copies", response_model=list[CopyOut])
+@router.get("/copies", response_model=list[CopyOut], dependencies=[Depends(_staff)])
 def list_copies(session: Session = Depends(get_session)) -> list[CopyOut]:
     rows = session.scalars(select(Copy).order_by(Copy.issued_at.desc(), Copy.copy_id))
     return [
@@ -75,10 +82,13 @@ def list_copies(session: Session = Depends(get_session)) -> list[CopyOut]:
     ]
 
 
-@router.get("/copies/{copy_id}/text", response_model=CopyText)
+@router.get(
+    "/copies/{copy_id}/text",
+    response_model=CopyText,
+    dependencies=[Depends(require_roles(ADMIN))],
+)
 def copy_text(copy_id: int, session: Session = Depends(get_session)) -> CopyText:
-    """Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin
-    yang seharusnya mengaksesnya begitu RBAC ada."""
+    """Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin."""
     if session.get(Copy, copy_id) is None:
         raise HTTPException(404, "salinan tidak ditemukan")
     return CopyText(copy_id=copy_id, text=encode_text(demo_template(), encode_payload(copy_id)))
@@ -90,7 +100,7 @@ def issue_copy(
     body: CopyRequest,
     session: Session = Depends(get_session),
     signer: Signer = Depends(get_signer),
-    actor: str = Header(default="anonim", alias="X-Actor"),
+    user: User = Depends(_staff),
 ) -> CopyIssued:
     """Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit."""
     document = session.get(Document, document_id)
@@ -119,7 +129,7 @@ def issue_copy(
             "recipient_nrp": recipient.nrp,
             "klasifikasi": document.klasifikasi,
         },
-        actor,
+        user.username,
     )
     session.commit()
     text = encode_text(demo_template(), encode_payload(copy_id))

@@ -36,5 +36,11 @@ export function summarize(body: LedgerBody | null): string {
     const id = d.copy_id == null ? "tanpa ID" : hexId(Number(d.copy_id));
     return `${String(d.status)} · ${id} · bit ${String(d.observed_bits)}/${String(d.total_bits)}`;
   }
+  if (body.event === "LOGIN_FAILED") {
+    return `login gagal: ${String(d.username)}${d.locked ? " (akun dikunci)" : ""}`;
+  }
+  if (typeof d.username === "string") {
+    return d.role ? `${d.username} (${String(d.role)})` : d.username;
+  }
   return JSON.stringify(d);
 }

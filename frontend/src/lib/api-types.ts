@@ -4,6 +4,123 @@
  */
 
 export interface paths {
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login
+         * @description Pesan gagal dan waktu responsnya sama untuk semua sebab, supaya akun tak bisa ditebak.
+         *
+         *     Saat akun terkunci tak ada entri ledger baru, sehingga serangan menebak sandi tidak bisa
+         *     membanjiri ledger: paling banyak MAX_FAILED_LOGINS entri per LOCK_MINUTES per akun.
+         */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Password
+         * @description Ganti sandi sendiri dan cabut semua sesi: setelah ini admin tak lagi tahu sandinya,
+         *     jadi nama pelaku di ledger benar-benar mewakili pemilik akun.
+         */
+        post: operations["change_password_api_v1_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_api_v1_users_get"];
+        put?: never;
+        /** Create User */
+        post: operations["create_user_api_v1_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set Active
+         * @description Aktifkan/nonaktifkan akun. Menonaktifkan langsung mencabut semua sesinya. Admin tak bisa
+         *     menonaktifkan dirinya sendiri, jadi selalu tersisa minimal satu admin aktif.
+         */
+        patch: operations["set_active_api_v1_users__user_id__patch"];
+        trace?: never;
+    };
     "/api/v1/layer2/watermark": {
         parameters: {
             query?: never;
@@ -106,8 +223,7 @@ export interface paths {
         };
         /**
          * Copy Text
-         * @description Render ulang teks salinan (deterministik). Untuk simulasi demo kebocoran; hanya admin
-         *     yang seharusnya mengaksesnya begitu RBAC ada.
+         * @description Render ulang teks salinan (deterministik) untuk simulasi demo kebocoran. Hanya admin.
          */
         get: operations["copy_text_api_v1_copies__copy_id__text_get"];
         put?: never;
@@ -237,6 +353,13 @@ export interface components {
              * Format: date-time
              */
             issued_at: string;
+        };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** CopyIssued */
         CopyIssued: {
@@ -406,6 +529,13 @@ export interface components {
             /** Entry Hash */
             entry_hash: string;
         };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** RecipientIn */
         RecipientIn: {
             /** Nrp */
@@ -433,6 +563,41 @@ export interface components {
             satuan: string;
             /** Id */
             id: number;
+        };
+        /** UserActiveUpdate */
+        UserActiveUpdate: {
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** UserCreate */
+        UserCreate: {
+            /** Username */
+            username: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "distributor" | "investigator";
+            /** Password */
+            password: string;
+        };
+        /** UserOut */
+        UserOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "distributor" | "investigator";
+            /** Is Active */
+            is_active: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -493,12 +658,243 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    watermark_api_v1_layer2_watermark_post: {
+    login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_api_v1_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_user_api_v1_users_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_active_api_v1_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserActiveUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    watermark_api_v1_layer2_watermark_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -531,7 +927,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -564,7 +962,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -577,6 +977,15 @@ export interface operations {
                     "application/json": components["schemas"]["RecipientOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_recipient_api_v1_recipients_post: {
@@ -584,7 +993,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -617,7 +1028,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -630,6 +1043,15 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_document_api_v1_documents_post: {
@@ -637,7 +1059,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -670,7 +1094,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -683,6 +1109,15 @@ export interface operations {
                     "application/json": components["schemas"]["CopyOut"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     copy_text_api_v1_copies__copy_id__text_get: {
@@ -692,7 +1127,9 @@ export interface operations {
             path: {
                 copy_id: number;
             };
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -719,13 +1156,13 @@ export interface operations {
     issue_copy_api_v1_documents__document_id__copies_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-Actor"?: string;
-            };
+            header?: never;
             path: {
                 document_id: number;
             };
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -756,11 +1193,11 @@ export interface operations {
     intake_text_api_v1_intake_text_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-Actor"?: string;
-            };
+            header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody: {
             content: {
@@ -797,7 +1234,9 @@ export interface operations {
             };
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -826,7 +1265,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -837,6 +1278,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

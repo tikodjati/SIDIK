@@ -14,7 +14,7 @@ GET  /api/v1/ledger                        daftar entri
 GET  /api/v1/ledger/verify                 verifikasi seluruh rantai
 ```
 
-Header opsional `X-Actor` mencatat siapa yang bertindak (default `anonim`). **Belum ada autentikasi/RBAC**: semua endpoint terbuka (purwarupa). Itu harus ada sebelum dipakai di luar demo.
+Semua endpoint wajib login dan dibatasi peran; pelaku di ledger diambil dari pengguna yang login. Lihat `docs/AUTENTIKASI_RBAC.md`. Entri lama bernama `anonim` atau nama bebas berasal dari sebelum autentikasi ada, dan tetap tersimpan karena ledger tidak bisa diubah.
 
 ## Pagar anti salah-tuduh (berlapis)
 
@@ -68,7 +68,6 @@ Catatan lingkungan: bila komputer sudah menjalankan PostgreSQL lain di port 5432
 
 ## Belum ada
 
-- Autentikasi dan RBAC (distributor / investigator / admin).
 - Intake foto (Lapis 1) ke registri dan penggabungan bukti Lapis 1+2.
 - Bentuk PDF dari naskah Lapis 2 (saat ini Lapis 1 dan Lapis 2 memakai template terpisah).
 - Jangkar eksternal otomatis untuk `head_hash`.
