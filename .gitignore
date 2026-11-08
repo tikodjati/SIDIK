@@ -16,6 +16,8 @@ desktop.ini
 *.key
 *.p12
 data/keys/
+# Database SQLite lokal (jalan tanpa Docker)
+*.db
 
 # Python & Virtual Environments
 __pycache__/

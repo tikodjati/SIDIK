@@ -90,3 +90,33 @@ def test_sequence_has_no_gaps_after_a_rolled_back_transaction(session, signer):
     session.commit()
     assert [e.seq for e in session.scalars(select(LedgerEntry).order_by(LedgerEntry.seq))] == [1, 2]
     assert _verify(session, signer).ok
+
+
+def test_parallel_writers_on_sqlite_file_keep_a_valid_chain(tmp_path, monkeypatch, signer):
+    """Jalur lokal tanpa PostgreSQL: penulis bersamaan tak boleh bentrok di nomor urut."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from sqlalchemy.orm import Session
+
+    import app.db as db
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "database_url", f"sqlite:///{tmp_path / 'lokal.db'}")
+    db.get_engine.cache_clear()
+    try:
+        engine = db.get_engine()
+        db.Base.metadata.create_all(engine)
+
+        def write(i: int) -> None:
+            with Session(engine) as s:
+                ledger.append_event(s, signer, "KONKUREN", {"i": i}, "uji")
+                s.commit()
+
+        with ThreadPoolExecutor(12) as pool:
+            list(pool.map(write, range(24)))
+        with Session(engine) as s:
+            result = _verify(s, signer)
+        assert result.ok and result.entries == 24
+        engine.dispose()
+    finally:
+        db.get_engine.cache_clear()
