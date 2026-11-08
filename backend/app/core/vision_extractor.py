@@ -114,37 +114,139 @@ def rectify_by_text(
 PARTIAL_FACTOR = 4  # resolusi pencarian potongan pada template (1/4)
 
 
-def _line_pitch(profile: np.ndarray) -> float:
-    """Jarak antar-baris (px) dari autokorelasi profil tinta per baris: puncak lokal pertama."""
-    p = profile - profile.mean()
-    ac = np.correlate(p, p, mode="full")[len(p) - 1 :]
-    if ac[0] <= 0:
-        raise ValueError("profil baris datar")
-    ac = ac / ac[0]
-    for lag in range(3, len(ac) // 2 + 1):
-        if ac[lag] > 0.2 and ac[lag] >= ac[lag - 1] and ac[lag] >= ac[lag + 1]:
-            return float(lag)
-    raise ValueError("jarak baris tak terukur")
+@dataclass(frozen=True)
+class TextBlock:
+    """Blok naskah pada peta tinta yang sudah diluruskan (koordinat peta tinta)."""
+
+    box: tuple[int, int, int, int]  # x, y, lebar, tinggi
+    pitch: float  # jarak antar-baris (px)
+    ends: tuple[tuple[tuple[float, float], tuple[float, float]], ...]  # (ujung kiri, ujung kanan)
+
+
+def _text_block(ink: np.ndarray) -> TextBlock | None:
+    """Blok naskah: rantai baris rata-kiri terpanjang (naskah rata kiri, baris-barisnya bertumpuk
+    dengan tepi kiri yang sama), jadi tinta lain di foto (taskbar, tab browser, bingkai layar,
+    kertas lain) tidak ikut. Juga titik ujung kiri/kanan tiap baris untuk koreksi perspektif.
+    None bila tak ada rantai minimal 3 baris."""
+    h, w = ink.shape
+    lines = cv2.morphologyEx(
+        ink, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (max(3, w // 40), 1))
+    )
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(lines)
+    cand = [
+        (int(x), int(y), int(bw), int(bh), i)
+        for i, (x, y, bw, bh, _) in enumerate(stats[1:n], start=1)
+        if bw >= w // 10 and 2 <= bh <= h // 8
+    ]
+    if len(cand) < 3:
+        return None
+    cand.sort(key=lambda c: c[1] + c[3] / 2)
+    med_h = float(np.median([c[3] for c in cand]))
+    tol = max(3, w // 40)
+    best: list[tuple[int, int, int, int, int]] = []
+    for i in range(len(cand)):
+        chain = [cand[i]]
+        for c in cand[i + 1 :]:
+            last = chain[-1]
+            gap = (c[1] + c[3] / 2) - (last[1] + last[3] / 2)
+            if gap > 6 * med_h:
+                break
+            if gap > 0.5 * med_h and abs(c[0] - last[0]) <= tol:
+                chain.append(c)
+        if len(chain) > len(best):
+            best = chain
+    if len(best) < 3:
+        return None
+    ends = []
+    for x, y, bw, bh, idx in best:
+        ys, xs = np.nonzero(labels[y : y + bh, x : x + bw] == idx)
+        edge = max(2, bw // 10)
+        left, right = xs < edge, xs >= bw - edge
+        ends.append((  # x = tepi tinta, y = tinggi rata-rata tinta di dekat tepi itu
+            (float(x + xs.min()), y + float(ys[left].mean())),
+            (float(x + xs.max() + 1), y + float(ys[right].mean())),
+        ))
+    x0 = min(c[0] for c in best)
+    y0 = min(c[1] for c in best)
+    x1 = max(c[0] + c[2] for c in best)
+    y1 = max(c[1] + c[3] for c in best)
+    centres = np.array([c[1] + c[3] / 2 for c in best])
+    return TextBlock(
+        (x0, y0, x1 - x0, y1 - y0), float(np.median(np.diff(centres))), tuple(ends)
+    )
+
+
+def _normalizer(pts: np.ndarray) -> np.ndarray:
+    c = pts.mean(axis=0)
+    d = np.sqrt(((pts - c) ** 2).sum(axis=1)).mean() or 1.0
+    s = np.sqrt(2) / d
+    return np.array([[s, 0, -s * c[0]], [0, s, -s * c[1]], [0, 0, 1]])
+
+
+def _apply(m: np.ndarray, pts: np.ndarray) -> np.ndarray:
+    p = np.c_[pts, np.ones(len(pts))] @ m.T
+    return p[:, :2] / p[:, 2:3]
+
+
+def _perspective_from_lines(
+    ends: np.ndarray, start: np.ndarray, layout: l1.Layout, dpi: int
+) -> np.ndarray | None:
+    """Homografi foto -> halaman dari geometri baris: ujung kiri tiap baris harus jatuh di
+    margin kiri, dan kedua ujungnya pada ketinggian baris template yang sama (baris lurus).
+    Ujung kanan hanya diberi bobot kecil untuk posisi mendatar karena panjang baris berbeda
+    sedikit antar-salinan (lebar kata varian). `ends`: (n, 2, 2) titik pada foto; `start`:
+    homografi awal untuk menentukan baris template mana yang dimaksud tiap baris foto.
+    None bila baris yang cocok terlalu sedikit atau sisa galatnya besar."""
+    k = dpi / 72
+    pitch = layout.leading * k
+    centres = np.array([(b - 0.275 * layout.font_size) * k for b in layout.baselines])
+    right_x = np.array([spans[-1][1] * k for spans in layout.spans])
+    h = start
+    for _ in range(3):
+        left_pg = _apply(h, ends[:, 0])
+        idx = np.abs(centres[None, :] - left_pg[:, 1:2]).argmin(axis=1)
+        ok = np.abs(centres[idx] - left_pg[:, 1]) < 0.35 * pitch
+        dup = np.bincount(idx[ok], minlength=len(centres)) > 1
+        ok &= ~dup[idx]
+        if ok.sum() < 4:
+            return None
+        src = ends[ok].reshape(-1, 2)
+        li = idx[ok]
+        dst = np.empty_like(src)
+        dst[0::2] = np.c_[np.full(len(li), l1.MARGIN_L * k), centres[li]]
+        dst[1::2] = np.c_[right_x[li], centres[li]]
+        ts, td = _normalizer(src), _normalizer(dst)
+        sn, dn = _apply(ts, src), _apply(td, dst)
+        rows = []
+        for j, ((u, v), (x, y)) in enumerate(zip(sn, dn)):
+            wx = 1.0 if j % 2 == 0 else 0.2  # ujung kanan: posisi mendatar kurang pasti
+            rows.append(wx * np.array([u, v, 1, 0, 0, 0, -x * u, -x * v, -x]))
+            rows.append(np.array([0, 0, 0, u, v, 1, -y * u, -y * v, -y]))
+        _, _, vt = np.linalg.svd(np.array(rows))
+        hn = vt[-1].reshape(3, 3)
+        h = np.linalg.inv(td) @ hn @ ts
+        h = h / h[2, 2]
+    resid = np.abs(_apply(h, src)[:, 1] - dst[:, 1])
+    return h if np.median(resid) < 0.15 * pitch else None
 
 
 def rectify_partial(
     gray: np.ndarray, out_size: tuple[int, int], layout: l1.Layout, dpi: int
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Untuk foto yang hanya memuat sebagian halaman (potongan beberapa baris/separuh halaman):
-    luruskan baris teks, perkirakan skala dari jarak antar-baris, lalu cari letak potongan pada
-    render template (template matching). Bagian halaman di luar potongan diisi putih.
-    Mengembalikan (citra, mask area potongan) agar penyelarasan halus hanya memakai area itu."""
+    """Untuk foto yang hanya memuat sebagian halaman (potongan, atau halaman di layar yang
+    sebagian tertutup taskbar): luruskan baris teks, cari blok naskah, perkirakan skala dari
+    jarak antar-baris, lalu cari letaknya pada render template (template matching). Perspektif
+    (mis. layar laptop yang condong) dikoreksi dari geometri baris. Bagian halaman di luar
+    potongan diisi putih. Mengembalikan (citra, mask area potongan) agar penyelarasan halus
+    hanya memakai area itu."""
     ink, f = _ink_map(gray)
     h, w = ink.shape
     rot_m = cv2.getRotationMatrix2D((w / 2, h / 2), _text_angle(ink), 1.0)
     rot = cv2.warpAffine(ink, rot_m, (w, h))
-    side = max(h, w)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (side // 40, side // 40))
-    blob = cv2.morphologyEx(rot, cv2.MORPH_CLOSE, kernel)
-    contours, _ = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        raise ValueError("teks tak ditemukan")
-    bx, by, bw, bh = cv2.boundingRect(max(contours, key=cv2.contourArea))
+    block = _text_block(rot)
+    if block is None:
+        raise ValueError("blok naskah tak ditemukan")
+    bx, by, bw, bh = block.box
     text = cv2.GaussianBlur(rot[by : by + bh, bx : bx + bw].astype(np.float32), (0, 0), 1.0)
 
     fr = PARTIAL_FACTOR
@@ -153,10 +255,9 @@ def rectify_partial(
         255 - ref, (ref.shape[1] // fr, ref.shape[0] // fr), interpolation=cv2.INTER_AREA
     ).astype(np.float32)
     ref_small = cv2.GaussianBlur(ref_small, (0, 0), 1.0)
-    pitch_ref = layout.leading * dpi / 72 / fr
-    base = pitch_ref / _line_pitch(text.sum(axis=1))
+    base = layout.leading * dpi / 72 / fr / block.pitch
     best = (-1.0, 1.0, (0, 0))
-    for s in base * np.arange(0.94, 1.0601, 0.02):
+    for s in base * np.arange(0.7, 1.3001, 0.02):  # jarak baris kasar (px bulat, foto kecil)
         tw, th = round(bw * s), round(bh * s)
         if not (8 <= tw <= ref_small.shape[1] and 4 <= th <= ref_small.shape[0]):
             continue
@@ -166,24 +267,27 @@ def rectify_partial(
     score, s, (mx, my) = best
     if score <= 0:
         raise ValueError("potongan tak cocok dengan template")
-    to_small = np.diag([1 / f, 1 / f, 1.0])
-    rotate = np.vstack([rot_m, [0, 0, 1]])
+    to_photo = np.linalg.inv(np.vstack([rot_m, [0, 0, 1]]) @ np.diag([1 / f, 1 / f, 1.0]))
     fit = np.array(
         [[fr * s, 0, fr * (mx - s * bx)], [0, fr * s, fr * (my - s * by)], [0, 0, 1]]
     )
+    m = fit @ np.linalg.inv(to_photo)  # foto -> halaman (kemiripan)
+    ends = _apply(to_photo, np.array(block.ends).reshape(-1, 2)).reshape(-1, 2, 2)
+    m = _perspective_from_lines(ends, m, layout, dpi)
+    if m is None:
+        m = fit @ np.linalg.inv(to_photo)
     out = cv2.warpPerspective(
-        gray, fit @ rotate @ to_small, out_size, flags=cv2.INTER_CUBIC,
+        gray, m, out_size, flags=cv2.INTER_CUBIC,
         borderMode=cv2.BORDER_CONSTANT, borderValue=255,
     )
-    # di luar kotak teks potongan (latar meja, jari, dsb.) dibuat putih
-    pad = layout.leading * dpi / 72 / 2
-    x0, y0 = int(max(fr * mx - pad, 0)), int(max(fr * my - pad, 0))
-    x1, y1 = int(fr * (mx + s * bw) + pad), int(fr * (my + s * bh) + pad)
-    masked = np.full_like(out, 255)
-    masked[y0:y1, x0:x1] = out[y0:y1, x0:x1]
+    # di luar blok naskah (taskbar, latar meja, jari, dsb.) dibuat putih
+    corners = np.array([[bx, by], [bx + bw, by], [bx + bw, by + bh], [bx, by + bh]], float)
+    quad = _apply(m @ to_photo, corners)
     mask = np.zeros_like(out)
-    mask[y0:y1, x0:x1] = 255
-    return masked, mask
+    cv2.fillConvexPoly(mask, np.round(quad).astype(np.int32), 255)
+    pad = int(layout.leading * dpi / 72 / 2)
+    mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_RECT, (2 * pad + 1, 2 * pad + 1)))
+    return np.where(mask > 0, out, 255).astype(np.uint8), mask
 
 
 def flatten_illumination(gray: np.ndarray, window_div: int = 160) -> np.ndarray:
@@ -517,6 +621,7 @@ def align_candidates(
     ref = reference_flat(layout, dpi)
     page_size = (ref.shape[1], ref.shape[0])
     ranked = []
+    partial: tuple[float, np.ndarray] | None = None  # potongan terkoreksi perspektif, tanpa ECC
     for k in range(4):
         g = np.ascontiguousarray(np.rot90(gray, k))
         for rectifier in (
@@ -529,15 +634,21 @@ def align_candidates(
                 flat, mask = rectifier(g)
             except (ValueError, cv2.error):
                 continue
-            rough, cc, mask = refine_alignment(
+            rough, cc, refined_mask = refine_alignment(
                 flat, layout, dpi, factors=(16, 8), affine_first=True, iterations=60, mask=mask
             )
-            ranked.append((cc, rough, mask))
+            ranked.append((cc, rough, refined_mask))
+            if mask is not None and (partial is None or cc > partial[0]):
+                partial = (cc, flat)
     for _, rough, mask in sorted(ranked, key=lambda c: -c[0])[:max_tries]:
         aligned, _, mask = refine_alignment(rough, layout, dpi, factors=(8, 4, 2), mask=mask)
         if mask is not None:
             aligned = np.where(mask > 0, aligned, 255).astype(np.uint8)
         yield aligned
+    # Foto layar/potongan dengan perspektif kuat: ECC bisa terkunci ke baris tetangga dan
+    # merusak hasil koreksi perspektif dari geometri baris, jadi versi tanpa ECC dicoba terakhir.
+    if partial is not None:
+        yield partial[1]
 
 
 def decode_photo(
