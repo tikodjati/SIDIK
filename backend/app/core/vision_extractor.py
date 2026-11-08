@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 
 from app.core import layer1_visual as l1
+from app.core.payload import PayloadDecodeError, decode_scores
 
 
 def _order_corners(pts: np.ndarray) -> np.ndarray:
@@ -59,23 +60,27 @@ def _text_angle(ink: np.ndarray) -> float:
     return float(max(np.arange(coarse - 1, coarse + 1.01, 0.1), key=sharpness))
 
 
-def _template_text_box(dpi: int) -> tuple[float, float, float, float]:
+def _template_text_box(layout: l1.Layout, dpi: int) -> tuple[float, float, float, float]:
     k = dpi / 72
-    x1 = max(spans[-1][1] for spans in (l1.word_spans(li) for li in range(l1.LINES)))
-    y0 = (l1.baseline_y(0) - 0.75 * l1.FONT_SIZE) * k
-    y1 = (l1.baseline_y(l1.LINES - 1) + 0.2 * l1.FONT_SIZE) * k
+    x1 = max(spans[-1][1] for spans in layout.spans)
+    y0 = (layout.baselines[0] - 0.75 * layout.font_size) * k
+    y1 = (layout.baselines[-1] + 0.2 * layout.font_size) * k
     return l1.MARGIN_L * k, y0, x1 * k, y1
 
 
 def rectify_by_text(
-    gray: np.ndarray, out_size: tuple[int, int], dpi: int, method: str = "deskew"
+    gray: np.ndarray,
+    out_size: tuple[int, int],
+    layout: l1.Layout,
+    dpi: int,
+    method: str = "deskew",
 ) -> np.ndarray:
     """Alternatif `rectify_page` yang tak bergantung pada tepi kertas (bisa terpotong, tertutup
     jari, atau menyatu dengan kertas lain): kotak teks foto dicocokkan ke kotak teks template.
 
     `deskew`: estimasi sudut baris teks, putar lurus, ambil kotak pembatas.
     `minrect`: persegi panjang berotasi minimum dari blok tinta (lebih baik untuk beberapa foto)."""
-    tx0, ty0, tx1, ty1 = _template_text_box(dpi)
+    tx0, ty0, tx1, ty1 = _template_text_box(layout, dpi)
     if method == "minrect":
         side = max(gray.shape)
         ink = cv2.adaptiveThreshold(
@@ -105,44 +110,76 @@ def rectify_by_text(
     return cv2.warpPerspective(gray, fit @ rotate @ to_small, out_size, flags=cv2.INTER_CUBIC)
 
 
-def flatten_illumination(gray: np.ndarray) -> np.ndarray:
-    """Buang gradien bayangan/pencahayaan: bagi dengan estimasi latar kertas lokal."""
-    k = max(gray.shape) // 160 | 1
-    bg = cv2.dilate(gray, np.ones((k, k), np.uint8))
-    bg = cv2.GaussianBlur(bg, (0, 0), k * 2).astype(np.float32)
-    return np.clip(gray.astype(np.float32) / np.maximum(bg, 1) * 255, 0, 255).astype(np.uint8)
+def flatten_illumination(gray: np.ndarray, window_div: int = 160) -> np.ndarray:
+    """Buang gradien bayangan/pencahayaan: bagi dengan estimasi latar kertas lokal.
+
+    Latar = dilasi (nilai paling terang = kertas) dengan jendela sisi terpanjang/`window_div`,
+    lalu dihaluskan. Dilasi dilakukan pada resolusi citra itu sendiri: bila citra diperkecil
+    dulu, area teks padat tak lagi punya piksel kertas murni dan latarnya terlalu gelap (terbukti
+    merusak penyelarasan foto miring). Hanya penghalusan yang dilakukan pada <= 640 px, karena
+    latar berubah halus dan blur besar pada resolusi penuh mahal."""
+    k = max(3, max(gray.shape) // window_div | 1)
+    peak = cv2.dilate(gray, cv2.getStructuringElement(cv2.MORPH_RECT, (k, k)))
+    f = max(1.0, max(gray.shape) / 640)
+    if f == 1.0:
+        bg = cv2.GaussianBlur(peak, (0, 0), k * 2)
+    else:
+        small = cv2.resize(peak, None, fx=1 / f, fy=1 / f, interpolation=cv2.INTER_AREA)
+        small = cv2.GaussianBlur(small, (0, 0), max(1.0, k * 2 / f))
+        bg = cv2.resize(small, (gray.shape[1], gray.shape[0]), interpolation=cv2.INTER_LINEAR)
+    return np.clip(
+        gray.astype(np.float32) / np.maximum(bg.astype(np.float32), 1) * 255, 0, 255
+    ).astype(np.uint8)
 
 
 @lru_cache(maxsize=4)
-def reference_flat(dpi: int) -> np.ndarray:
-    return flatten_illumination(l1.rasterize_gray(l1.render_pdf(None, 0), dpi))
+def reference_flat(layout: l1.Layout, dpi: int) -> np.ndarray:
+    return flatten_illumination(l1.rasterize_gray(l1.render_pdf(layout, None, 0), dpi))
+
+
+def _ecc_input(img: np.ndarray, size: tuple[int, int]) -> np.ndarray:
+    """Citra kecil untuk ECC. Cahaya diratakan pada resolusi 1/2 (bukan penuh: jauh lebih cepat)
+    dengan jendela lebih dari satu jarak baris, baru diperkecil. Meratakan setelah diperkecil
+    membuat latar di area teks padat terlalu gelap; terbukti merusak penyelarasan foto miring."""
+    mid_w = max(size[0], img.shape[1] // 2)
+    mid = cv2.resize(img, (mid_w, round(img.shape[0] * mid_w / img.shape[1])),
+                     interpolation=cv2.INTER_AREA)
+    small = cv2.resize(flatten_illumination(mid, window_div=60), size, interpolation=cv2.INTER_AREA)
+    return cv2.GaussianBlur(255 - small.astype(np.float32), (0, 0), 1.5)
+
+
+@lru_cache(maxsize=16)
+def _reference_ecc_input(layout: l1.Layout, dpi: int, size: tuple[int, int]) -> np.ndarray:
+    return _ecc_input(reference_flat(layout, dpi), size)
 
 
 def refine_alignment(
-    flat: np.ndarray, dpi: int, factors: tuple[int, ...] = (8, 4, 2), affine_first: bool = False
+    flat: np.ndarray,
+    layout: l1.Layout,
+    dpi: int,
+    factors: tuple[int, ...] = (8, 4, 2),
+    affine_first: bool = False,
+    iterations: int = 150,
 ) -> tuple[np.ndarray, float]:
     """Daftarkan citra yang sudah diluruskan kasar ke render template dengan ECC, bertahap dari
     resolusi rendah. Teks dipakai sebagai acuan, jadi lebih presisi daripada empat sudut kertas.
     `affine_first`: tahap pembuka affine pada resolusi sangat rendah (jangkauan konvergensi
     lebih lebar) sebelum homografi. Mengembalikan (citra selaras, korelasi ECC terakhir)."""
-    ref = reference_flat(dpi)
+    ref = reference_flat(layout, dpi)
     stages = [(16, cv2.MOTION_AFFINE)] if affine_first else []
     stages += [(f, cv2.MOTION_HOMOGRAPHY) for f in factors]
     current, cc = flat, 0.0
     for factor, motion in stages:
         size = (ref.shape[1] // factor, ref.shape[0] // factor)
-
-        def prep(img: np.ndarray, size: tuple[int, int] = size) -> np.ndarray:
-            small = cv2.resize(flatten_illumination(img), size, interpolation=cv2.INTER_AREA)
-            return cv2.GaussianBlur(255 - small.astype(np.float32), (0, 0), 1.5)
-
         init = np.eye(2, 3, dtype=np.float32) if motion == cv2.MOTION_AFFINE else np.eye(
             3, dtype=np.float32
         )
-        criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 150, 1e-5)
+        criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, iterations, 1e-5)
         try:
             cc, warp = cv2.findTransformECC(
-                prep(ref), prep(current), init, motion, criteria, None, 5
+                _reference_ecc_input(layout, dpi, size), _ecc_input(current, size), init,
+                motion,
+                criteria, None, 5,
             )
         except cv2.error:
             continue  # tidak konvergen pada skala ini; lanjut dengan citra apa adanya
@@ -171,10 +208,13 @@ class RowGeometry:
     score: float  # korelasi profil baris, 1 = identik
 
 
-def locate_rows(flat: np.ndarray, dpi: int) -> RowGeometry:
-    """Cocokkan profil baris foto dengan template (cetakan sering diperkecil 'fit to page')."""
-    img = _row_profile(flatten_illumination(flat))
-    ref = _row_profile(reference_flat(dpi))
+def locate_rows(
+    flat: np.ndarray, layout: l1.Layout, dpi: int, flattened: bool = False
+) -> RowGeometry:
+    """Cocokkan profil baris foto dengan template (cetakan sering diperkecil 'fit to page').
+    `flattened`: citra sudah melalui flatten_illumination."""
+    img = _row_profile(flat if flattened else flatten_illumination(flat))
+    ref = _row_profile(reference_flat(layout, dpi))
     ys = np.arange(len(img), dtype=np.float32)
     cy = len(img) / 2
 
@@ -199,19 +239,21 @@ def _darkness(band: np.ndarray) -> np.ndarray:
     return np.clip((paper - band.astype(np.float32)) / paper, 0, 1)
 
 
-def _expected_centre(line: int, dpi: int, geom: RowGeometry, height: int) -> float:
+def _expected_centre(
+    layout: l1.Layout, line: int, dpi: int, geom: RowGeometry, height: int
+) -> float:
     k = dpi / 72
-    base = height / 2 + geom.scale * (l1.baseline_y(line) * k - height / 2) + geom.dy
-    return base - 0.275 * l1.FONT_SIZE * k * geom.scale
+    base = height / 2 + geom.scale * (layout.baselines[line] * k - height / 2) + geom.dy
+    return base - 0.275 * layout.font_size * k * geom.scale
 
 
 def _line_rows(
-    gray: np.ndarray, expect: float, scale: float, dpi: int
+    gray: np.ndarray, expect: float, scale: float, layout: l1.Layout, dpi: int
 ) -> tuple[tuple[int, int], float] | None:
     """Baris piksel (y0, y1) satu baris teks, dipusatkan pada tinta sebenarnya di sekitar posisi
     perkiraan `expect` (koreksi lokal). Mengembalikan juga pusat baris yang ditemukan."""
     k = dpi / 72
-    half = int(0.5 * l1.LEADING * k * scale)
+    half = int(0.5 * layout.leading * k * scale)
     w0, w1 = int(expect) - half, int(expect) + half
     if w0 < 0 or w1 > gray.shape[0]:
         return None
@@ -219,8 +261,8 @@ def _line_rows(
     win = _darkness(gray[w0:w1, cols]).sum(axis=1)
     body = win >= 0.4 * win.max()
     centre = w0 + float((np.arange(len(win))[body] * win[body]).sum() / win[body].sum())
-    y0 = int(centre - 0.525 * l1.FONT_SIZE * k * scale)
-    y1 = int(centre + 0.525 * l1.FONT_SIZE * k * scale)
+    y0 = int(centre - 0.525 * layout.font_size * k * scale)
+    y1 = int(centre + 0.525 * layout.font_size * k * scale)
     return ((y0, y1), centre) if y0 >= 0 and y1 <= gray.shape[0] else None
 
 
@@ -229,13 +271,14 @@ def _column_profile(gray: np.ndarray, rows: tuple[int, int]) -> np.ndarray:
 
 
 @lru_cache(maxsize=4)
-def _reference_columns(dpi: int) -> list[np.ndarray]:
+def _reference_columns(layout: l1.Layout, dpi: int) -> list[np.ndarray]:
     """Profil kolom tiap baris pada render template tanpa modulasi (skala 1, tanpa geseran)."""
-    flat = reference_flat(dpi)
+    flat = reference_flat(layout, dpi)
     identity = RowGeometry(1.0, 0.0, 1.0)
     out = []
-    for li in range(l1.LINES):
-        rows, _ = _line_rows(flat, _expected_centre(li, dpi, identity, flat.shape[0]), 1.0, dpi)
+    for li in range(len(layout.lines)):
+        expect = _expected_centre(layout, li, dpi, identity, flat.shape[0])
+        rows, _ = _line_rows(flat, expect, 1.0, layout, dpi)
         out.append(_column_profile(flat, rows))
     return out
 
@@ -260,10 +303,15 @@ def _zncc_shift(
 
 
 MIN_WORD_CORR = 0.5
+LINE_SCALE_RANGE = 0.07  # sisa skala horizontal per baris (foto miring kuat butuh lebar)
 
 
 def measure_slot_scores(
-    gray: np.ndarray, delta_pt: float, dpi: int, geom: RowGeometry | None = None
+    gray: np.ndarray,
+    layout: l1.Layout,
+    delta_pt: float,
+    dpi: int,
+    geom: RowGeometry | None = None,
 ) -> dict[int, float]:
     """Skor per slot (~+1 untuk bit 1, ~-1 untuk bit 0) lewat registrasi kata ke template.
 
@@ -275,34 +323,45 @@ def measure_slot_scores(
     """
     k = dpi / 72
     flat = flatten_illumination(gray)
-    geom = geom or locate_rows(gray, dpi)
-    refs = _reference_columns(dpi)
+    geom = geom or locate_rows(flat, layout, dpi, flattened=True)
+    refs = _reference_columns(layout, dpi)
     cx = flat.shape[1] / 2
     amp = delta_pt * k
-    nominal = l1.LEADING * k * geom.scale
-    pitch = nominal
+    ratio = 1.0  # jarak baris terukur / jarak baris template (sisa distorsi vertikal)
     prev: float | None = None
+    prev_line = 0
+    step = 1.0
     scores: dict[int, float] = {}
-    for li in range(l1.LINES):
-        expect = _expected_centre(li, dpi, geom, flat.shape[0]) if prev is None else prev + pitch
-        found = _line_rows(flat, expect, geom.scale, dpi)
+    for li in range(len(layout.lines)):
+        if prev is None:
+            expect = _expected_centre(layout, li, dpi, geom, flat.shape[0])
+        else:
+            step = (layout.baselines[li] - layout.baselines[prev_line]) * k * geom.scale
+            expect = prev + step * ratio
+        found = _line_rows(flat, expect, geom.scale, layout, dpi)
         if found is None:
-            prev = expect
+            prev, prev_line = expect, li
             continue
         rows, centre = found
         if prev is not None:
-            blended = 0.7 * pitch + 0.3 * (centre - prev)
-            pitch = float(np.clip(blended, 0.9 * nominal, 1.1 * nominal))
-        prev = centre
+            ratio = float(np.clip(0.7 * ratio + 0.3 * (centre - prev) / step, 0.9, 1.1))
+        prev, prev_line = centre, li
+        if layout.pairs(li) == 0:
+            continue  # baris pendek (judul dsb.): ikut dilacak, tapi tak membawa bit
         img = _column_profile(flat, rows)
-        spans = [(int(a * k), int(b * k)) for a, b in l1.word_spans(li)]
+        spans = [(int(a * k), int(b * k)) for a, b in layout.spans[li]]
 
         # skala + geseran horizontal baris (sisa distorsi berbeda tiap baris): kasar lalu halus
         xs = np.arange(spans[0][0] - 3, spans[-1][1] + 4, dtype=np.float32)
         line_ref = refs[li][xs.astype(int)]
         best = (-1.0, 1.0, 0.0)
-        for sx in np.arange(0.93, 1.07, 0.004):
+        for sx in np.arange(1 - LINE_SCALE_RANGE, 1 + LINE_SCALE_RANGE + 1e-9, 0.01):
             dx, z = _zncc_shift(line_ref, img, cx + sx * (xs - cx), np.arange(-90, 90.1, 3.0))
+            best = max(best, (z, sx, dx))
+        _, sx0, dx0 = best
+        for sx in np.arange(sx0 - 0.01, sx0 + 0.0101, 0.002):  # halus di sekitar yang terbaik
+            near = np.arange(dx0 - 9, dx0 + 9.1, 1.0)
+            dx, z = _zncc_shift(line_ref, img, cx + sx * (xs - cx), near)
             best = max(best, (z, sx, dx))
         _, sx, dx = best
         dx, _ = _zncc_shift(line_ref, img, cx + sx * (xs - cx), np.arange(dx - 3, dx + 3.01, 0.25))
@@ -315,11 +374,64 @@ def measure_slot_scores(
             shift, z = _zncc_shift(refs[li][xw.astype(int)], img, pos, sx * taus)
             offsets.append(shift / sx)
             corrs.append(z)
-        for p in range(l1.PAIRS_PER_LINE):
+        for p in range(layout.pairs(li)):
             i = 2 * p + 1
             if min(corrs[i - 1 : i + 2]) < MIN_WORD_CORR:
                 continue
-            scores[li * l1.PAIRS_PER_LINE + p] = float(
+            scores[layout.slot_base[li] + p] = float(
                 (offsets[i] - 0.5 * (offsets[i - 1] + offsets[i + 1])) / amp
             )
     return scores
+
+
+@dataclass(frozen=True)
+class PhotoResult:
+    """Hasil analisis foto: skor slot, citra selaras, dan (copy_id, flags) bila terdekode."""
+
+    scores: dict[int, float]
+    aligned: np.ndarray
+    geom: RowGeometry
+    decoded: tuple[int, int] | None
+
+
+def decode_photo(
+    gray: np.ndarray,
+    layout: l1.Layout,
+    delta_pt: float,
+    dpi: int,
+    max_tries: int = 3,
+) -> PhotoResult | None:
+    """Luruskan dan baca foto halaman. Kandidat pelurusan (3 cara awal x 4 rotasi) dinilai
+    dengan ECC sampai resolusi 1/8 (affine 1/16, lalu homografi 1/16 dan 1/8; tahap yang gagal
+    konvergen dilewati). Penilaian di 1/16 saja terbukti menyingkirkan kandidat yang benar.
+    `max_tries` teratas diselaraskan penuh dan didekode berurutan. Mengembalikan yang pertama
+    terdekode, atau yang slotnya terbanyak. None bila kertas/teks sama sekali tak ditemukan."""
+    ref = reference_flat(layout, dpi)
+    page_size = (ref.shape[1], ref.shape[0])
+    ranked = []
+    for k in range(4):
+        g = np.ascontiguousarray(np.rot90(gray, k))
+        for rectifier in (
+            lambda im: rectify_page(im, page_size),
+            lambda im: rectify_by_text(im, page_size, layout, dpi),
+            lambda im: rectify_by_text(im, page_size, layout, dpi, method="minrect"),
+        ):
+            try:
+                flat = rectifier(g)
+            except (ValueError, cv2.error):
+                continue
+            rough, cc = refine_alignment(
+                flat, layout, dpi, factors=(16, 8), affine_first=True, iterations=60
+            )
+            ranked.append((cc, rough))
+    best: PhotoResult | None = None
+    for _, rough in sorted(ranked, key=lambda c: -c[0])[:max_tries]:
+        aligned, _ = refine_alignment(rough, layout, dpi, factors=(8, 4, 2))
+        geom = locate_rows(aligned, layout, dpi)
+        scores = measure_slot_scores(aligned, layout, delta_pt, dpi, geom)
+        try:
+            return PhotoResult(scores, aligned, geom, decode_scores(scores))
+        except PayloadDecodeError:
+            if best is None or len(scores) > len(best.scores):
+                best = PhotoResult(scores, aligned, geom, None)
+    return best

@@ -69,6 +69,30 @@ Kasus yang masih gagal: halaman kecil di bingkai (jauh), landscape, sudut kertas
 
 Batas lain: simulasi 1280 px dengan blur σ ≥ 1,6 px masih gagal; waktu proses ±1,5 menit per foto yang sulit (±25 detik untuk foto mudah), belum dioptimasi; foto dikompres WhatsApp, foto resolusi asli belum diuji.
 
+## Dashboard dan optimasi kecepatan (2026-11-08)
+
+Foto kini bisa diunggah langsung di dashboard (halaman Investigasi, tab Foto). PDF salinan diunduh dari halaman Distribusi: naskah dinas demo dengan penanda Lapis 1 (δ = 0,5 pt, `SIDIK_LAYER1_DELTA_PT`), 54 baris, 160 slot (payload ±1,5x). Teks PDF sama untuk semua salinan; identitas hanya ada di spasi.
+
+Regresi 11 foto asli (halaman spike, laptop pengembang, cache referensi sudah hangat seperti di server):
+
+| | Sebelum optimasi | Sesudah |
+| :--- | :---: | :---: |
+| Foto berwatermark terbaca | 6/7 | 6/7 (yang gagal berbeda: `putar_tangan`; `jauh_tangan` kini terbaca) |
+| Kontrol ditolak | 4/4 | 4/4 |
+| Hasil `SALAH` | 0 | 0 |
+| Waktu foto terbaca | 25 dtk – 1,5 menit | 7–15 dtk |
+| Waktu foto ditolak | sampai 2,5 menit | 15–25 dtk |
+
+Uji ujung ke ujung di stack Docker: PDF diunduh lewat API, difoto secara simulasi (miring 25°, blur, JPEG), diunggah di dashboard sebagai investigator: teridentifikasi dalam 11,2 dtk, 160/160 slot.
+
+Pelajaran dari optimasi (tiap "percepatan" sempat merusak foto miring, terdeteksi oleh regresi foto asli):
+1. Penyebab lambat utama: perataan cahaya pada resolusi penuh di setiap tahap ECC (100 dari 124 dtk).
+2. Mencari kertas putih (dilasi) harus di resolusi citra itu sendiri. Bila citra diperkecil dulu, area teks padat tak punya piksel kertas murni dan latar terlalu gelap; penyelarasan foto miring gagal.
+3. Kandidat pelurusan harus dinilai sampai resolusi 1/8; penilaian di 1/16 saja menyingkirkan kandidat yang benar.
+4. Rentang skala per baris perlu ±7% (dicari kasar lalu halus); ±3% gagal pada foto miring kuat.
+
+Belum: foto asli dari PDF naskah (semua foto di atas memakai halaman spike). Tim perlu mencetak dan memotret ulang PDF dari dashboard. Uji persepsi δ = 0,5 pt juga belum: pada render, beberapa spasi tampak sedikit lebih lebar.
+
 ## Langkah berikutnya
 
 1. Foto asli: cetak/tampilkan PDF δ=0,3 dan 0,5, foto dengan HP tim (sudut, cahaya, jarak berbeda), jalankan ekstraktor; simpan di `data/test_leaks/`.

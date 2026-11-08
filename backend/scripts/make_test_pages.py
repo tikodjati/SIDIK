@@ -16,10 +16,13 @@ OUT = Path(__file__).resolve().parents[2] / "data" / "watermarked_outputs" / "uj
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--deltas", type=float, nargs="+", default=[0.3, 0.5])
+    ap.add_argument("--layout", choices=("spike", "naskah"), default="spike")
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     frame = encode_payload(COPY_ID)
+    layout = l1.naskah_layout() if a.layout == "naskah" else l1.spike_layout()
+    prefix = "naskah_" if a.layout == "naskah" else ""
     for d in a.deltas:
-        (OUT / f"uji_d{d}.pdf").write_bytes(l1.render_pdf(frame, d))
-    (OUT / "kontrol_tanpa_modulasi.pdf").write_bytes(l1.render_pdf(None, 0))
+        (OUT / f"{prefix}uji_d{d}.pdf").write_bytes(l1.render_pdf(layout, frame, d))
+    (OUT / f"{prefix}kontrol_tanpa_modulasi.pdf").write_bytes(l1.render_pdf(layout, None, 0))
     print(f"copy_id uji = 0x{COPY_ID:08X}\nPDF ditulis ke: {OUT}")

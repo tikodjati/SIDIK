@@ -86,6 +86,9 @@ class IntakeResult(BaseModel):
     attribution: Attribution | None = None
     ledger: LedgerRef
     note: str
+    aligned_preview: str | None = Field(
+        default=None, description="Foto setelah diluruskan (JPEG base64, kecil); hanya intake foto"
+    )
 
 
 class LedgerEntryOut(BaseModel):

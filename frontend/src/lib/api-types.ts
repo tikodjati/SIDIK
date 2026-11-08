@@ -234,6 +234,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/copies/{copy_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Copy Pdf
+         * @description PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).
+         *     Teksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat.
+         */
+        get: operations["copy_pdf_api_v1_copies__copy_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{document_id}/copies": {
         parameters: {
             query?: never;
@@ -265,13 +286,32 @@ export interface paths {
         put?: never;
         /**
          * Intake Text
-         * @description Analisis teks bukti, petakan ke salinan terdaftar, dan catat investigasi di ledger.
-         *
-         *     Dua pagar anti salah-tuduh: dekoder menolak bukti rusak berat, dan `copy_id` hasil dekode
-         *     wajib terdaftar. Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya
-         *     hash bukti, bukan isi teksnya.
+         * @description Analisis teks bukti (ketik ulang / salinan teks) lewat Lapis 2.
          */
         post: operations["intake_text_api_v1_intake_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/intake/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Intake Photo
+         * @description Analisis foto halaman naskah lewat Lapis 1 (pergeseran spasi antar-kata).
+         *
+         *     Seluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama
+         *     karena semua kandidat pelurusan dicoba.
+         */
+        post: operations["intake_photo_api_v1_intake_photo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -353,6 +393,16 @@ export interface components {
              * Format: date-time
              */
             issued_at: string;
+        };
+        /** Body_intake_photo_api_v1_intake_photo_post */
+        Body_intake_photo_api_v1_intake_photo_post: {
+            /**
+             * Photo
+             * @description Foto/scan halaman naskah (JPEG, PNG, atau WebP)
+             */
+            photo: string;
+            /** Case Ref */
+            case_ref?: string | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -493,6 +543,11 @@ export interface components {
             ledger: components["schemas"]["LedgerRef"];
             /** Note */
             note: string;
+            /**
+             * Aligned Preview
+             * @description Foto setelah diluruskan (JPEG base64, kecil); hanya intake foto
+             */
+            aligned_preview?: string | null;
         };
         /** IntakeTextRequest */
         IntakeTextRequest: {
@@ -1153,6 +1208,39 @@ export interface operations {
             };
         };
     };
+    copy_pdf_api_v1_copies__copy_id__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                copy_id: number;
+            };
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     issue_copy_api_v1_documents__document_id__copies_post: {
         parameters: {
             query?: never;
@@ -1202,6 +1290,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["IntakeTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_photo_api_v1_intake_photo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_intake_photo_api_v1_intake_photo_post"];
             };
         };
         responses: {

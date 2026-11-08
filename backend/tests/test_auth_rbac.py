@@ -32,6 +32,8 @@ ALLOWED = {
     ("POST", "/api/v1/documents"): {A, D},
     ("GET", "/api/v1/copies"): {A, D},
     ("GET", "/api/v1/copies/{copy_id}/text"): {A},
+    ("GET", "/api/v1/copies/{copy_id}/pdf"): {A, D},
+    ("POST", "/api/v1/intake/photo"): {A, INV},
     ("POST", "/api/v1/documents/{document_id}/copies"): {A, D},
     ("POST", "/api/v1/intake/text"): {A, INV},
     ("GET", "/api/v1/ledger"): {A, INV},

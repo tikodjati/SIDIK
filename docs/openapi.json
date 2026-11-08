@@ -823,6 +823,61 @@
         }
       }
     },
+    "/api/v1/copies/{copy_id}/pdf": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Copy Pdf",
+        "description": "PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).\nTeksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat.",
+        "operationId": "copy_pdf_api_v1_copies__copy_id__pdf_get",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/documents/{document_id}/copies": {
       "post": {
         "tags": [
@@ -898,7 +953,7 @@
           "intake"
         ],
         "summary": "Intake Text",
-        "description": "Analisis teks bukti, petakan ke salinan terdaftar, dan catat investigasi di ledger.\n\nDua pagar anti salah-tuduh: dekoder menolak bukti rusak berat, dan `copy_id` hasil dekode\nwajib terdaftar. Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya\nhash bukti, bukan isi teksnya.",
+        "description": "Analisis teks bukti (ketik ulang / salinan teks) lewat Lapis 2.",
         "operationId": "intake_text_api_v1_intake_text_post",
         "parameters": [
           {
@@ -924,6 +979,66 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/IntakeTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intake/photo": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Photo",
+        "description": "Analisis foto halaman naskah lewat Lapis 1 (pergeseran spasi antar-kata).\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
+        "operationId": "intake_photo_api_v1_intake_photo_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_photo_api_v1_intake_photo_post"
               }
             }
           }
@@ -1153,6 +1268,33 @@
           "issued_at"
         ],
         "title": "Attribution"
+      },
+      "Body_intake_photo_api_v1_intake_photo_post": {
+        "properties": {
+          "photo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Photo",
+            "description": "Foto/scan halaman naskah (JPEG, PNG, atau WebP)"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo"
+        ],
+        "title": "Body_intake_photo_api_v1_intake_photo_post"
       },
       "ChangePasswordRequest": {
         "properties": {
@@ -1488,6 +1630,18 @@
           "note": {
             "type": "string",
             "title": "Note"
+          },
+          "aligned_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aligned Preview",
+            "description": "Foto setelah diluruskan (JPEG base64, kecil); hanya intake foto"
           }
         },
         "type": "object",

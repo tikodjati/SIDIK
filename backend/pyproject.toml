@@ -16,15 +16,14 @@ dependencies = [
     "rapidfuzz>=3.9",
     "cryptography>=43",
     "python-multipart>=0.0.9",
+    "pymupdf>=1.24",
+    "opencv-python-headless>=4.10",
 ]
 
 [project.optional-dependencies]
-# Dipasang bertahap saat modul terkait dikerjakan (lihat docs/KEPUTUSAN_ARSITEKTUR.md)
+# Alat tambahan yang belum dipakai API (PyMuPDF dan OpenCV sudah di dependensi utama).
 forensics = [
-    "pymupdf>=1.24",
     "python-docx>=1.1",
-    "opencv-python-headless>=4.10",
-    "numpy>=1.26",
     "pytesseract>=0.3.13",
 ]
 verifier = [
@@ -51,4 +50,4 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query", "fastapi.File", "fastapi.Form"]

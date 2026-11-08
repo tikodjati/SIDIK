@@ -22,7 +22,10 @@ Akun: `admin`, `distributor`, `investigator`. Detail peran ada di `docs/AUTENTIK
    1. Daftarkan penerima (NRP, nama, pangkat, jabatan, satuan).
    2. Daftarkan naskah (nomor, judul, klasifikasi).
    3. Pilih naskah + penerima, klik **Terbitkan**. Muncul ID salinan, nomor entri ledger, dan teks naskah bertanda (salin atau unduh .txt). Terbitkan untuk beberapa penerima: teksnya berbeda-beda.
+   4. Klik **Unduh PDF (cetak)** (atau tombol **PDF** di tabel) lalu cetak A4. Tiap unduhan tercatat di ledger (`COPY_EXPORTED`).
 2. **Investigasi** (`/investigasi`, masuk sebagai `investigator`)
+   - **Tab Foto / scan:** potret kertas cetak (boleh miring, terputar, diperkecil saat cetak; seluruh halaman sebaiknya terlihat), unggah, klik **Analisis bukti**. Hasil muncul dalam ±10–15 detik beserta gambar halaman yang sudah diluruskan; foto yang ditolak butuh ±20 detik. Di HP, tombol unggah langsung membuka kamera.
+   - **Tab Teks / ketik ulang:**
    1. Tempel potongan teks dari langkah 1. Alternatif untuk demo cepat: masuk sebagai `admin`, lalu pakai kartu *Simulasi kebocoran* (pilih salinan, atur bagian teks, huruf kapital / salah ketik, klik **Buat teks bocor simulasi**). Kartu itu hanya muncul untuk admin.
    2. Klik **Analisis bukti**. Hasil: nama, pangkat, NRP, jabatan, satuan penerima, naskah, waktu terbit, plus ledger yang mencatat analisis.
    3. Coba slider rendah (±30%) atau teks bebas: hasilnya **BUKTI TIDAK CUKUP** (sistem menolak menebak), dan penolakan itu juga tercatat.
@@ -49,6 +52,7 @@ Masuk sebagai `distributor`, lalu buka `/audit`: halaman menampilkan **Akses dit
 
 - Admin tetap sangat berkuasa walau tercatat di ledger; otorisasi ganda dan HSM masih roadmap.
 - Atribusi menunjukkan **salinan yang diterbitkan**, bukan putusan bersalah.
-- Hanya bukti teks (Lapis 2). Foto (Lapis 1) belum tersambung ke registri/dashboard.
+- Foto dan teks masih dua jalur terpisah: PDF cetak membawa Lapis 1 saja, teks digital membawa Lapis 2 saja; bukti keduanya belum digabung. Ketik ulang dari kertas cetak tidak terlacak.
+- Foto dari PDF naskah baru diuji dengan foto simulasi; foto asli belum.
 - Kamus Lapis 2 sementara (belum divalidasi Perkasad); naskah demo ≈ 60% teks dibutuhkan untuk identifikasi.
 - Tidak ada halaman "Verifikasi Klaim" (AI anti-psywar) karena modulnya belum dibangun.

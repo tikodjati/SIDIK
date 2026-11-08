@@ -10,10 +10,12 @@ import {
   type Recipient,
   createDocument,
   createRecipient,
+  getCopyPdf,
   issueCopy,
   listCopies,
   listDocuments,
   listRecipients,
+  saveBlob,
 } from "@/lib/api";
 import { formatTime, hexId } from "@/lib/format";
 
@@ -86,13 +88,13 @@ function DistribusiPanel() {
 
   const download = () => {
     if (!issued) return;
-    const url = URL.createObjectURL(new Blob([issued.text], { type: "text/plain;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `salinan_${hexId(issued.copy_id)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const blob = new Blob([issued.text], { type: "text/plain;charset=utf-8" });
+    saveBlob(blob, `salinan_${hexId(issued.copy_id)}.txt`);
   };
+
+  /** PDF untuk dicetak (penanda Lapis 1 di spasi antar-kata). Tiap unduhan tercatat di ledger. */
+  const downloadPdf = (copyId: number) =>
+    void run(async () => saveBlob(await getCopyPdf(copyId), `salinan_${hexId(copyId)}.pdf`));
 
   const copyText = () => {
     if (issued) void navigator.clipboard?.writeText(issued.text).catch(() => undefined);
@@ -210,6 +212,9 @@ function DistribusiPanel() {
               <Button tone="muted" type="button" onClick={copyText}>
                 Salin teks
               </Button>
+              <Button type="button" onClick={() => downloadPdf(issued.copy_id)} disabled={busy}>
+                Unduh PDF (cetak)
+              </Button>
               <Button tone="muted" type="button" onClick={download}>
                 Unduh .txt
               </Button>
@@ -231,6 +236,7 @@ function DistribusiPanel() {
                   <th>NRP</th>
                   <th>Naskah</th>
                   <th>Diterbitkan</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -241,6 +247,11 @@ function DistribusiPanel() {
                     <td className="font-mono">{c.recipient_nrp}</td>
                     <td>{c.document_nomor}</td>
                     <td>{formatTime(c.issued_at)}</td>
+                    <td className="py-1 text-right">
+                      <Button tone="muted" onClick={() => downloadPdf(c.copy_id)} disabled={busy}>
+                        PDF
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

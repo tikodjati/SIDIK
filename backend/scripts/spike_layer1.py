@@ -65,18 +65,18 @@ def simulate_camera(
     return cv2.imdecode(enc, cv2.IMREAD_GRAYSCALE)
 
 
-def run_condition(delta, long_side, tilt, blur, trials, save_dir):
+def run_condition(layout, delta, long_side, tilt, blur, trials, save_dir):
     ber_num = ber_den = ok = wrong = 0
     for t in range(trials):
         rng = random.Random(1000 * t + long_side + int(delta * 100))
         copy_id = rng.getrandbits(32)
         frame = encode_payload(copy_id)
-        page = l1.rasterize_gray(l1.render_pdf(frame, delta), DPI)
+        page = l1.rasterize_gray(l1.render_pdf(layout, frame, delta), DPI)
         photo = page if long_side == 0 else simulate_camera(page, long_side, tilt, blur, 80, rng)
         if long_side and save_dir and t == 0:
             cv2.imwrite(str(save_dir / f"d{delta}_L{long_side}_t{tilt}.jpg"), photo)
         flat = photo if long_side == 0 else rectify_page(photo, (page.shape[1], page.shape[0]))
-        scores = measure_slot_scores(flat, delta, DPI)
+        scores = measure_slot_scores(flat, layout, delta, DPI)
         bits = np.unpackbits(np.frombuffer(frame, dtype=np.uint8))
         for n, s in scores.items():
             ber_den += 1
@@ -99,18 +99,20 @@ if __name__ == "__main__":
     ap.add_argument("--tilts", type=float, nargs="+", default=[0, 35])
     ap.add_argument("--blur", type=float, default=0.8)
     ap.add_argument("--save-sample", type=Path)
+    ap.add_argument("--layout", choices=("spike", "naskah"), default="spike")
     a = ap.parse_args()
     if a.save_sample:
         a.save_sample.mkdir(parents=True, exist_ok=True)
 
-    print(f"slot per halaman: {l1.LINES * l1.PAIRS_PER_LINE}, bit payload: 104")
+    layout = l1.naskah_layout() if a.layout == "naskah" else l1.spike_layout()
+    print(f"tata letak {layout.name}: {layout.total_slots} slot per halaman, bit payload: 104")
     print(f"{'delta(pt)':>9} {'sisi-panjang':>12} {'tilt':>5} {'slot-BER':>9} "
           f"{'pulih':>6} {'salah':>6}")
     for delta, long_side, tilt in itertools.product(a.deltas, a.long_sides, a.tilts):
         if long_side == 0 and tilt != a.tilts[0]:
             continue
         ber, ok, wrong, _ = run_condition(
-            delta, long_side, tilt, a.blur, a.trials, a.save_sample
+            layout, delta, long_side, tilt, a.blur, a.trials, a.save_sample
         )
         label = "ideal" if long_side == 0 else str(long_side)
         print(f"{delta:>9} {label:>12} {tilt:>5} {ber:>9.3f} {ok:>3}/{a.trials:<2} {wrong:>6}")

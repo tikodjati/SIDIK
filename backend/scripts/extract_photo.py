@@ -9,59 +9,18 @@ Foto harus memuat seluruh halaman (4 sudut kertas terlihat), kertas lebih terang
 
 import argparse
 import re
+import time
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 from app.core import layer1_visual as l1
-from app.core.payload import PayloadDecodeError, decode_scores, encode_payload
-from app.core.vision_extractor import (
-    locate_rows,
-    measure_slot_scores,
-    rectify_by_text,
-    rectify_page,
-    refine_alignment,
-)
+from app.core.payload import encode_payload
+from app.core.vision_extractor import decode_photo, reference_flat
 from scripts.make_test_pages import COPY_ID
 
 DPI = 300
-
-
-MAX_TRIES = 8
-
-
-def analyse(gray, page_size, delta):
-    """Cari kandidat penyelarasan (3 cara awal x 4 rotasi x dengan/tanpa tahap affine), urutkan
-    menurut korelasi ECC kasar, lalu coba dekode berurutan; pakai yang pertama berhasil.
-    Jika tidak ada, kembalikan percobaan dengan slot terbaca terbanyak."""
-    candidates = []
-    for k in range(4):
-        g = np.ascontiguousarray(np.rot90(gray, k))
-        for rectifier in (
-            lambda im: rectify_page(im, page_size),
-            lambda im: rectify_by_text(im, page_size, DPI),
-            lambda im: rectify_by_text(im, page_size, DPI, method="minrect"),
-        ):
-            try:
-                flat = rectifier(g)
-            except (ValueError, cv2.error):
-                continue
-            for affine in (True, False):
-                rough, cc = refine_alignment(flat, DPI, factors=(8,), affine_first=affine)
-                candidates.append((cc, rough))
-    best = None
-    for _, rough in sorted(candidates, key=lambda c: -c[0])[:MAX_TRIES]:
-        aligned, _ = refine_alignment(rough, DPI, factors=(4, 2))
-        geom = locate_rows(aligned, DPI)
-        scores = measure_slot_scores(aligned, delta, DPI, geom)
-        info = (len(scores), aligned, scores, geom)
-        try:
-            return (*info, decode_scores(scores))
-        except PayloadDecodeError:
-            if best is None or info[0] > best[0]:
-                best = (*info, None)
-    return best
 
 
 def main():
@@ -70,12 +29,16 @@ def main():
     ap.add_argument("--delta", type=float)
     ap.add_argument("--copy-id", type=lambda s: int(s, 0), default=COPY_ID)
     ap.add_argument("--out", type=Path, help="simpan citra hasil pelurusan untuk diperiksa")
+    ap.add_argument(
+        "--layout", choices=("spike", "naskah"), default="spike",
+        help="spike = halaman uji kata acak (foto uji lama); naskah = PDF salinan dari dashboard",
+    )
     a = ap.parse_args()
     if a.out:
         a.out.mkdir(parents=True, exist_ok=True)
 
-    ref_page = l1.rasterize_gray(l1.render_pdf(None, 0), DPI)
-    page_size = (ref_page.shape[1], ref_page.shape[0])
+    layout = l1.naskah_layout() if a.layout == "naskah" else l1.spike_layout()
+    reference_flat(layout, DPI)  # render referensi sekali (di server ini terjadi saat start)
     expected_bits = np.unpackbits(np.frombuffer(encode_payload(a.copy_id), dtype=np.uint8))
 
     for path in a.photos:
@@ -88,12 +51,14 @@ def main():
         if gray is None:
             print(f"{path.name}: tidak bisa dibaca")
             continue
-        found = analyse(gray, page_size, delta)
+        started = time.perf_counter()
+        found = decode_photo(gray, layout, delta, DPI)
+        elapsed = time.perf_counter() - started
         if found is None:
             print(f"{path.name}: kertas tidak ditemukan "
                   "(kontras kertas-meja kurang / sudut terpotong)")
             continue
-        ok_lines, flat, scores, geom, decoded = found
+        flat, scores, geom, decoded = found.aligned, found.scores, found.geom, found.decoded
         if a.out:
             small = cv2.resize(flat, None, fx=0.4, fy=0.4)
             cv2.imwrite(str(a.out / f"{path.stem}_lurus.jpg"), small)
@@ -108,7 +73,7 @@ def main():
         else:
             result = "GAGAL (bukti tidak cukup; sistem menolak menebak)"
         print(
-            f"{path.name}: slot terbaca {ok_lines}/{l1.LINES * l1.PAIRS_PER_LINE}, "
+            f"{path.name} [{elapsed:.1f} dtk]: slot {len(scores)}/{layout.total_slots}, "
             f"skala {geom.scale:.3f} skor-baris {geom.score:.2f}, "
             f"slot-BER {ber:.3f} (vs id uji), {result}"
         )

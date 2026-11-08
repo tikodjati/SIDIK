@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     session_hours: int = 8
     # Wajib true bila dilayani lewat HTTPS; false hanya untuk http://localhost saat pengembangan.
     cookie_secure: bool = False
+    # Amplitudo modulasi spasi Lapis 1 pada PDF salinan (pt). Uji foto asli: 0,3 dan 0,5 terbaca.
+    layer1_delta_pt: float = 0.5
+    max_photo_mb: int = 15
 
 
 settings = Settings()

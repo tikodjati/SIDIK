@@ -1,19 +1,17 @@
 # Panduan Uji Foto Asli (Lapis 1)
 
+> **Putaran berikutnya (disarankan): lewat dashboard.** Masuk sebagai `distributor`, terbitkan salinan di **Distribusi**, klik **Unduh PDF (cetak)**, cetak A4, foto dengan HP, lalu masuk sebagai `investigator` dan unggah di **Investigasi → Foto / scan**. Aturan memotret di bawah tetap berlaku. Untuk kontrol: unduh lalu bandingkan dengan PDF tanpa watermark dari `python -m scripts.make_test_pages --layout naskah` (berkas `naskah_kontrol_tanpa_modulasi.pdf`).
+>
+> Panduan di bawah ini untuk halaman uji spike (kata acak) memakai skrip baris perintah.
+
 Tujuan: mengukur apakah payload terbaca dari foto HP sungguhan. Hasilnya menentukan klaim di dokumen submisi.
 
 ## 1. Siapkan PDF uji
 
-Pasang dependensi forensik sekali saja (PyMuPDF, OpenCV, NumPy; tidak ikut instalasi biasa):
+PyMuPDF dan OpenCV kini sudah ikut instalasi biasa (`pip install -e ".[dev]"`). Buat PDF:
 
 ```bash
 cd backend
-pip install -e ".[forensics]"
-```
-
-Lalu buat PDF:
-
-```bash
 python -m scripts.make_test_pages
 ```
 
@@ -61,6 +59,7 @@ Nama berkas memuat δ: `uji_d0.3_dekat_miring35.jpg`, `uji_d0.5_jauh_terang.jpg`
 ```bash
 cd backend
 python -m scripts.extract_photo ../data/test_leaks/*.jpg --out ../data/test_leaks/lurus
+# foto dari PDF naskah (dashboard / --layout naskah): tambahkan --layout naskah
 ```
 
 Keluaran per foto: jumlah baris terukur, `slot-BER`, dan hasil:

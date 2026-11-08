@@ -1,11 +1,13 @@
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN, DISTRIBUTOR, require_roles
+from app.config import settings
+from app.core import layer1_visual as l1
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, encode_text
 from app.core.payload import encode_payload
@@ -92,6 +94,33 @@ def copy_text(copy_id: int, session: Session = Depends(get_session)) -> CopyText
     if session.get(Copy, copy_id) is None:
         raise HTTPException(404, "salinan tidak ditemukan")
     return CopyText(copy_id=copy_id, text=encode_text(demo_template(), encode_payload(copy_id)))
+
+
+@router.get(
+    "/copies/{copy_id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def copy_pdf(
+    copy_id: int,
+    session: Session = Depends(get_session),
+    signer: Signer = Depends(get_signer),
+    user: User = Depends(_staff),
+) -> Response:
+    """PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).
+    Teksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat."""
+    copy = session.get(Copy, copy_id)
+    if copy is None:
+        raise HTTPException(404, "salinan tidak ditemukan")
+    pdf = l1.render_pdf(l1.naskah_layout(), encode_payload(copy_id), settings.layer1_delta_pt)
+    data = {"copy_id": copy_id, "document_nomor": copy.document.nomor, "format": "pdf"}
+    append_event(session, signer, "COPY_EXPORTED", data, user.username)
+    session.commit()
+    return Response(
+        pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="salinan_{copy_id:08X}.pdf"'},
+    )
 
 
 @router.post("/documents/{document_id}/copies", response_model=CopyIssued, status_code=201)

@@ -34,7 +34,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       cache: "no-store",
       credentials: "include", // cookie sesi HttpOnly
       ...init,
-      headers: { "Content-Type": "application/json", ...init.headers },
+      // FormData (unggah foto) menetapkan Content-Type multipart sendiri.
+      headers: {
+        ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...init.headers,
+      },
     });
   } catch {
     throw new ApiError("Tidak dapat terhubung ke server API.", 0);
@@ -54,6 +58,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(detail, res.status);
   }
   if (res.status === 204) return undefined as T;
+  if (res.headers.get("content-type")?.startsWith("application/pdf")) return res.blob() as Promise<T>;
   return res.json() as Promise<T>;
 }
 
@@ -91,3 +96,20 @@ export const intakeText = (text: string, caseRef?: string) =>
 export const listLedger = (limit = 100, offset = 0) =>
   request<LedgerEntry[]>(`/api/v1/ledger?limit=${limit}&offset=${offset}&newest_first=true`);
 export const verifyLedger = () => request<VerifyResult>("/api/v1/ledger/verify");
+export const getCopyPdf = (copyId: number) => request<Blob>(`/api/v1/copies/${copyId}/pdf`);
+export function intakePhoto(photo: File, caseRef?: string) {
+  const form = new FormData();
+  form.append("photo", photo);
+  if (caseRef) form.append("case_ref", caseRef);
+  return request<IntakeResult>("/api/v1/intake/photo", { method: "POST", body: form });
+}
+
+/** Simpan Blob sebagai berkas unduhan di peramban. */
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
