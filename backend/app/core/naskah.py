@@ -1,0 +1,277 @@
+"""Naskah terpadu: satu PDF salinan membawa Lapis 1 (spasi antar-kata) dan Lapis 2 (pilihan kata).
+
+Pemenggalan baris dikunci memakai varian terlebar tiap slot, jadi semua salinan punya baris
+dan jumlah kata per baris yang sama; yang berbeda hanya kata varian dan spasinya. Akibatnya:
+- teks yang disalin dari PDF (atau diketik ulang dari kertas) membawa Lapis 2;
+- foto PDF membawa keduanya. Dari foto, kata varian dibaca dengan pencocokan bentuk 2D
+  (tanpa OCR), lalu teks salinan yang tepat dipakai sebagai referensi untuk mengukur spasi.
+Bukti kedua lapis digabung dalam satu dekode. Bila tiap lapis sendiri terbaca tetapi menunjuk
+salinan berbeda, hasilnya ditolak (tanda manipulasi).
+"""
+
+import re
+from collections.abc import Iterator
+from dataclasses import dataclass
+from functools import lru_cache
+
+import cv2
+import numpy as np
+import pymupdf
+
+from app.core import layer1_visual as l1
+from app.core import vision_extractor as vx
+from app.core.layer2_semantic import (
+    FRAME_BITS,
+    Slot,
+    demo_template,
+    variant_indices,
+    variant_scores,
+)
+from app.core.payload import PayloadDecodeError, decode_scores, encode_payload
+
+FONT_SIZE, LEADING = 9.5, 11.5
+Piece = str | int  # teks tetap, atau indeks slot
+Token = tuple[Piece, ...]  # satu kata cetak (mis. ("akurat", ".") = varian + tanda baca)
+
+# Kunci skor Lapis 2 digeser kelipatan FRAME_BITS agar tak bertabrakan dengan kunci Lapis 1
+# tetapi tetap jatuh pada bit frame yang sama di decode_scores (n mod FRAME_BITS).
+L2_KEY_OFFSET = FRAME_BITS * 10_000
+
+# Pencocokan bentuk kata varian (dikalibrasi dengan foto simulasi; docs/SPIKE_LAYER1_HASIL.md).
+PAD_PT = 1.5  # bingkai putih kiri-kanan templat: "dimaksud" tak cocok di dalam "dimaksudkan"
+SEARCH_PX = 30  # jendela pencarian horizontal di sekitar posisi perkiraan
+MIN_MATCH = 0.5  # korelasi minimum agar kata dianggap terlihat
+MIN_MARGIN = 0.03  # selisih minimum varian terbaik dengan pesaingnya
+
+
+@dataclass(frozen=True)
+class Structure:
+    lines: tuple[tuple[Token, ...], ...]
+    baselines: tuple[float, ...]
+
+
+def _piece_width(piece: Piece, widest: bool) -> float:
+    if isinstance(piece, str):
+        return pymupdf.get_text_length(piece, l1.FONT, FONT_SIZE)
+    variants = demo_template().slots[piece].variants
+    if not widest:
+        return pymupdf.get_text_length(variants[0], l1.FONT, FONT_SIZE)
+    return max(pymupdf.get_text_length(v, l1.FONT, FONT_SIZE) for v in variants)
+
+
+def _paragraphs() -> list[list[Token]]:
+    """Template -> paragraf -> token. Slot yang menempel tanda baca jadi satu token."""
+    paragraphs: list[list[Token]] = [[]]
+    current: list[Piece] = []
+
+    def flush() -> None:
+        if current:
+            paragraphs[-1].append(tuple(current))
+            current.clear()
+
+    for part in demo_template().parts:
+        if isinstance(part, Slot):
+            current.append(part.index)
+            continue
+        for m in re.finditer(r"\n|[ \t]+|[^\s]+", part):
+            text = m.group()
+            if text == "\n":
+                flush()
+                paragraphs.append([])
+            elif text.isspace():
+                flush()
+            else:
+                current.append(text)
+    flush()
+    while paragraphs and not paragraphs[0]:
+        paragraphs.pop(0)
+    while paragraphs and not paragraphs[-1]:
+        paragraphs.pop()
+    return paragraphs
+
+
+@lru_cache(maxsize=1)
+def structure() -> Structure:
+    """Baris terkunci: dipatahkan memakai lebar varian terlebar, jadi muat untuk salinan mana pun.
+    Jeda antar-paragraf setengah baris agar baris tambahan akibat varian terlebar tetap muat."""
+    space = pymupdf.get_text_length(" ", l1.FONT, FONT_SIZE)
+    lines: list[tuple[Token, ...]] = []
+    baselines: list[float] = []
+    y = l1.MARGIN_T + FONT_SIZE
+    for paragraph in _paragraphs():
+        if not paragraph:
+            y += LEADING / 2
+            continue
+        current: list[Token] = []
+        width = 0.0
+        for token in paragraph:
+            if sum(isinstance(p, int) for p in token) > 1:
+                raise ValueError(f"satu kata memuat lebih dari satu slot: {token}")
+            w = sum(_piece_width(p, widest=True) for p in token)
+            if current and width + space + w > l1.MAX_LINE_W:
+                lines.append(tuple(current))
+                baselines.append(y)
+                y += LEADING
+                current, width = [], 0.0
+            width = w if not current else width + space + w
+            current.append(token)
+        lines.append(tuple(current))
+        baselines.append(y)
+        y += LEADING
+    if y - LEADING > l1.PAGE_H - l1.MARGIN_T:
+        raise ValueError(f"naskah tidak muat satu halaman pada {FONT_SIZE} pt")
+    return Structure(tuple(lines), tuple(baselines))
+
+
+def _token_text(token: Token, choice: tuple[int, ...]) -> str:
+    slots = demo_template().slots
+    return "".join(p if isinstance(p, str) else slots[p].variants[choice[p]] for p in token)
+
+
+@lru_cache(maxsize=8)
+def layout_for(choice: tuple[int, ...]) -> l1.Layout:
+    """Tata letak salinan dengan varian terpilih tiap slot (posisi baris sama untuk semua)."""
+    st = structure()
+    lines = tuple(tuple(_token_text(t, choice) for t in line) for line in st.lines)
+    return l1.Layout("naskah", lines, st.baselines, FONT_SIZE, LEADING)
+
+
+def generic_layout() -> l1.Layout:
+    """Varian pertama di semua slot: referensi penyelarasan foto dan PDF kontrol."""
+    return layout_for(tuple(0 for _ in demo_template().slots))
+
+
+def copy_choice(copy_id: int) -> tuple[int, ...]:
+    return variant_indices(demo_template(), encode_payload(copy_id))
+
+
+def copy_pdf(copy_id: int, delta_pt: float) -> bytes:
+    """PDF salinan: varian kata (Lapis 2) dan modulasi spasi (Lapis 1) untuk `copy_id`."""
+    return l1.render_pdf(layout_for(copy_choice(copy_id)), encode_payload(copy_id), delta_pt)
+
+
+@lru_cache(maxsize=1024)
+def _word_template(text: str, dpi: int) -> np.ndarray:
+    """Render satu kata berbingkai putih, dipotong setinggi pita baris, sedikit diburamkan."""
+    k = dpi / 72
+    width = pymupdf.get_text_length(text, l1.FONT, FONT_SIZE) + 2 * PAD_PT
+    base = FONT_SIZE * 1.3
+    doc = pymupdf.open()
+    page = doc.new_page(width=width, height=FONT_SIZE * 2)
+    page.insert_text((PAD_PT, base), text, fontname=l1.FONT, fontsize=FONT_SIZE)
+    img = l1.rasterize_gray(doc.tobytes(), dpi)
+    crop = img[int((base - 0.8 * FONT_SIZE) * k) : int((base + 0.3 * FONT_SIZE) * k)]
+    return cv2.GaussianBlur(crop.astype(np.float32), (0, 0), 1.0)
+
+
+def read_variants(
+    flat: np.ndarray, tracked: list[tuple[int, int] | None], dpi: int
+) -> dict[int, int]:
+    """Varian tiap slot yang terlihat tegas di foto, {indeks slot: indeks varian}.
+
+    Kata dicari dari kiri ke kanan tiap baris; posisi kata berikut diperkirakan dari letak kata
+    yang baru ditemukan (lebar varian berbeda menggeser kata sesudahnya). Kata tetap juga
+    dicocokkan, hanya untuk menjaga perkiraan posisi."""
+    k = dpi / 72
+    pad_px = PAD_PT * k
+    slots = demo_template().slots
+    generic = generic_layout()
+    lines = structure().lines
+    src = cv2.GaussianBlur(flat.astype(np.float32), (0, 0), 1.0)
+    chosen: dict[int, int] = {}
+    for li, rows in enumerate(tracked):
+        if rows is None:
+            continue
+        y0, y1 = max(0, rows[0] - 12), min(src.shape[0], rows[1] + 12)
+        carry = 0.0  # geseran posisi kata terhadap tata letak generik (px)
+        for ti, token in enumerate(lines[li]):
+            slot = next((p for p in token if isinstance(p, int)), None)
+            n_options = len(slots[slot].variants) if slot is not None else 1
+            g_start, g_end = (v * k for v in generic.spans[li][ti])
+            found = []
+            for j in range(n_options):
+                text = _token_text(token, {slot: j} if slot is not None else {})
+                tpl = _word_template(text, dpi)
+                x0 = int(max(0, g_start + carry - pad_px - SEARCH_PX))
+                x1 = int(min(src.shape[1], g_start + carry - pad_px + tpl.shape[1] + SEARCH_PX))
+                region = src[y0:y1, x0:x1]
+                if region.shape[0] < tpl.shape[0] or region.shape[1] < tpl.shape[1]:
+                    continue
+                res = cv2.matchTemplate(region, tpl, cv2.TM_CCOEFF_NORMED)
+                _, score, _, loc = cv2.minMaxLoc(res)
+                start = x0 + loc[0] + pad_px
+                found.append((score, j, start, start + tpl.shape[1] - 2 * pad_px))
+            if not found:
+                continue
+            found.sort(reverse=True)
+            score, j, start, end = found[0]
+            if score < MIN_MATCH:
+                continue
+            if slot is not None and (len(found) == 1 or score - found[1][0] >= MIN_MARGIN):
+                chosen[slot] = j
+            carry = end - g_end
+    return chosen
+
+
+def _decode(scores: dict[int, float]) -> tuple[int, int] | None:
+    try:
+        return decode_scores(scores)
+    except PayloadDecodeError:
+        return None
+
+
+@dataclass(frozen=True)
+class NaskahResult:
+    aligned: np.ndarray
+    layer1_scores: dict[int, float]
+    layer2_scores: dict[int, float]
+    layer1_total: int
+    layer2_total: int
+    layer1_decoded: tuple[int, int] | None
+    layer2_decoded: tuple[int, int] | None
+    decoded: tuple[int, int] | None  # gabungan; None bila tak cukup atau bertentangan
+    conflict: bool
+
+    @property
+    def observed(self) -> int:
+        return len(self.layer1_scores) + len(self.layer2_scores)
+
+
+def analyse_aligned(aligned: np.ndarray, delta_pt: float, dpi: int) -> NaskahResult:
+    """Baca kedua lapis dari foto yang sudah diselaraskan ke tata letak generik."""
+    generic = generic_layout()
+    flat = vx.flatten_illumination(aligned)
+    geom = vx.locate_rows(flat, generic, dpi, flattened=True)
+    tracked = vx.track_lines(flat, generic, dpi, geom)
+    chosen = read_variants(flat, tracked, dpi)
+    template = demo_template()
+    l2 = variant_scores(template, chosen)
+    layout = layout_for(tuple(chosen.get(i, 0) for i in range(len(template.slots))))
+    l1_scores = vx.measure_slot_scores(aligned, layout, delta_pt, dpi, geom, tracked)
+
+    combined = {**l1_scores, **{n + L2_KEY_OFFSET: s for n, s in l2.items()}}
+    d1, d2, dc = _decode(l1_scores), _decode(l2), _decode(combined)
+    singles = [d for d in (d1, d2) if d is not None]
+    conflict = any(d != singles[0] for d in singles) or (
+        dc is not None and any(d != dc for d in singles)
+    )
+    return NaskahResult(
+        aligned, l1_scores, l2, layout.total_slots, template.capacity_bits,
+        d1, d2, None if conflict else dc, conflict,
+    )
+
+
+def decode_naskah_photo(
+    gray: np.ndarray, delta_pt: float, dpi: int, max_tries: int = 3
+) -> NaskahResult | None:
+    """Analisis foto PDF salinan. Kandidat penyelarasan dicoba berurutan; berhenti pada yang
+    terdekode atau bertentangan (bukti dimanipulasi). None bila kertas/teks tak ditemukan."""
+    best: NaskahResult | None = None
+    candidates: Iterator[np.ndarray] = vx.align_candidates(gray, generic_layout(), dpi, max_tries)
+    for aligned in candidates:
+        result = analyse_aligned(aligned, delta_pt, dpi)
+        if result.decoded is not None or result.conflict:
+            return result
+        if best is None or result.observed > best.observed:
+            best = result
+    return best

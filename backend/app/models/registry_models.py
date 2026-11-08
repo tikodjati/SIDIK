@@ -79,10 +79,22 @@ class LedgerRef(BaseModel):
     entry_hash: str
 
 
-class IntakeResult(BaseModel):
-    status: Literal["IDENTIFIED", "UNREGISTERED", "INSUFFICIENT_FORENSIC_ARTIFACTS"]
+class LayerReading(BaseModel):
+    layer: Literal["L1_SPASI", "L2_KATA"]
     observed_bits: int
     total_bits: int
+    decoded_alone: bool = Field(description="Lapis ini sendiri cukup untuk terdekode")
+
+
+class IntakeResult(BaseModel):
+    status: Literal[
+        "IDENTIFIED", "UNREGISTERED", "CONFLICTING_EVIDENCE", "INSUFFICIENT_FORENSIC_ARTIFACTS"
+    ]
+    observed_bits: int
+    total_bits: int
+    layers: list[LayerReading] = Field(
+        default_factory=list, description="Rincian per lapis; hanya intake foto"
+    )
     attribution: Attribution | None = None
     ledger: LedgerRef
     note: str

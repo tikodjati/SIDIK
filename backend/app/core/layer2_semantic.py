@@ -121,20 +121,44 @@ def _frame_bit(frame: bytes, n: int) -> int:
     return (frame[k // 8] >> (7 - k % 8)) & 1
 
 
-def encode_text(template: Template, frame: bytes) -> str:
-    """Render naskah dengan varian terpilih menurut bit frame (diulang bila slot > bit frame)."""
-    out: list[str] = []
+def variant_indices(template: Template, frame: bytes) -> tuple[int, ...]:
+    """Varian terpilih tiap slot menurut bit frame (diulang bila slot > bit frame)."""
+    out: list[int] = []
     n = 0
-    for part in template.parts:
-        if isinstance(part, str):
-            out.append(part)
-            continue
+    for slot in template.slots:
         index = 0
-        for j in range(part.bits):
+        for j in range(slot.bits):
             index = (index << 1) | _frame_bit(frame, n + j)
-        n += part.bits
-        out.append(part.variants[index])
-    return "".join(out)
+        n += slot.bits
+        out.append(index)
+    return tuple(out)
+
+
+def slot_bit_offsets(template: Template) -> tuple[int, ...]:
+    """Posisi bit pertama tiap slot pada urutan bit naskah."""
+    out, n = [], 0
+    for slot in template.slots:
+        out.append(n)
+        n += slot.bits
+    return tuple(out)
+
+
+def variant_scores(template: Template, chosen: dict[int, int]) -> dict[int, float]:
+    """Skor bit (+1/-1) dari varian yang teramati, {indeks slot: indeks varian}."""
+    offsets = slot_bit_offsets(template)
+    scores: dict[int, float] = {}
+    for slot_index, variant in chosen.items():
+        bits = template.slots[slot_index].bits
+        for j in range(bits):
+            bit = (variant >> (bits - 1 - j)) & 1
+            scores[offsets[slot_index] + j] = 1.0 if bit else -1.0
+    return scores
+
+
+def encode_text(template: Template, frame: bytes) -> str:
+    """Render naskah dengan varian terpilih menurut bit frame."""
+    chosen = iter(variant_indices(template, frame))
+    return "".join(p if isinstance(p, str) else p.variants[next(chosen)] for p in template.parts)
 
 
 def _match_score(variant: str, vocab: set[str]) -> float:
@@ -153,15 +177,11 @@ def extract_scores(template: Template, text: str) -> dict[int, float]:
     Slot tanpa varian yang cocok, atau dengan lebih dari satu varian yang cocok sama baik,
     dilewati (erasure)."""
     vocab = set(normalize(text).split())
-    scores: dict[int, float] = {}
-    n = 0
+    chosen: dict[int, int] = {}
     for slot in template.slots:
         values = [_match_score(normalize(v), vocab) for v in slot.variants]
         best = max(range(len(values)), key=values.__getitem__)
         rivals = [v for i, v in enumerate(values) if i != best]
         if values[best] >= FUZZY_MIN_SCORE and max(rivals) < FUZZY_MIN_SCORE:
-            for j in range(slot.bits):
-                bit = (best >> (slot.bits - 1 - j)) & 1
-                scores[n + j] = 1.0 if bit else -1.0
-        n += slot.bits
-    return scores
+            chosen[slot.index] = best
+    return variant_scores(template, chosen)

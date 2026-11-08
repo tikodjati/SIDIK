@@ -68,6 +68,5 @@ Catatan lingkungan: bila komputer sudah menjalankan PostgreSQL lain di port 5432
 
 ## Belum ada
 
-- Intake foto (Lapis 1) ke registri dan penggabungan bukti Lapis 1+2.
-- Bentuk PDF dari naskah Lapis 2 (saat ini Lapis 1 dan Lapis 2 memakai template terpisah).
+- (Sudah: intake foto ke registri, PDF salinan terpadu Lapis 1 + 2, dan penggabungan bukti; lihat [SPIKE_LAYER1_HASIL.md](SPIKE_LAYER1_HASIL.md).)
 - Jangkar eksternal otomatis untuk `head_hash`.

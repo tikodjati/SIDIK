@@ -92,7 +92,7 @@ function DistribusiPanel() {
     saveBlob(blob, `salinan_${hexId(issued.copy_id)}.txt`);
   };
 
-  /** PDF untuk dicetak (penanda Lapis 1 di spasi antar-kata). Tiap unduhan tercatat di ledger. */
+  /** PDF untuk dicetak: pilihan kata (Lapis 2) + spasi antar-kata (Lapis 1). Tiap unduhan tercatat di ledger. */
   const downloadPdf = (copyId: number) =>
     void run(async () => saveBlob(await getCopyPdf(copyId), `salinan_${hexId(copyId)}.pdf`));
 

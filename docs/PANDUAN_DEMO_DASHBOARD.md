@@ -52,7 +52,7 @@ Masuk sebagai `distributor`, lalu buka `/audit`: halaman menampilkan **Akses dit
 
 - Admin tetap sangat berkuasa walau tercatat di ledger; otorisasi ganda dan HSM masih roadmap.
 - Atribusi menunjukkan **salinan yang diterbitkan**, bukan putusan bersalah.
-- Foto dan teks masih dua jalur terpisah: PDF cetak membawa Lapis 1 saja, teks digital membawa Lapis 2 saja; bukti keduanya belum digabung. Ketik ulang dari kertas cetak tidak terlacak.
+- PDF salinan membawa Lapis 1 dan Lapis 2; foto membaca keduanya dan menggabungkan buktinya. Bila kedua lapis menunjuk salinan berbeda, hasilnya ditolak sebagai **BUKTI BERTENTANGAN**. Pembacaan pilihan kata dari foto baru diuji dengan foto simulasi.
 - Foto dari PDF naskah baru diuji dengan foto simulasi; foto asli belum.
 - Kamus Lapis 2 sementara (belum divalidasi Perkasad); naskah demo ≈ 60% teks dibutuhkan untuk identifikasi.
 - Tidak ada halaman "Verifikasi Klaim" (AI anti-psywar) karena modulnya belum dibangun.

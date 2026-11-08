@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from app.core import layer1_visual as l1
+from app.core import naskah
 from app.core.payload import PayloadDecodeError, decode_scores, encode_payload
 from app.core.vision_extractor import measure_slot_scores, rectify_page
 
@@ -104,7 +105,8 @@ if __name__ == "__main__":
     if a.save_sample:
         a.save_sample.mkdir(parents=True, exist_ok=True)
 
-    layout = l1.naskah_layout() if a.layout == "naskah" else l1.spike_layout()
+    # naskah: tata letak generik (varian pertama); simulasi ini hanya mengukur Lapis 1
+    layout = naskah.generic_layout() if a.layout == "naskah" else l1.spike_layout()
     print(f"tata letak {layout.name}: {layout.total_slots} slot per halaman, bit payload: 104")
     print(f"{'delta(pt)':>9} {'sisi-panjang':>12} {'tilt':>5} {'slot-BER':>9} "
           f"{'pulih':>6} {'salah':>6}")

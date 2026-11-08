@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN, DISTRIBUTOR, require_roles
 from app.config import settings
-from app.core import layer1_visual as l1
+from app.core import naskah
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, encode_text
 from app.core.payload import encode_payload
@@ -107,12 +107,13 @@ def copy_pdf(
     signer: Signer = Depends(get_signer),
     user: User = Depends(_staff),
 ) -> Response:
-    """PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).
-    Teksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat."""
+    """PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan
+    pergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.
+    Setiap unduhan dicatat."""
     copy = session.get(Copy, copy_id)
     if copy is None:
         raise HTTPException(404, "salinan tidak ditemukan")
-    pdf = l1.render_pdf(l1.naskah_layout(), encode_payload(copy_id), settings.layer1_delta_pt)
+    pdf = naskah.copy_pdf(copy_id, settings.layer1_delta_pt)
     data = {"copy_id": copy_id, "document_nomor": copy.document.nomor, "format": "pdf"}
     append_event(session, signer, "COPY_EXPORTED", data, user.username)
     session.commit()

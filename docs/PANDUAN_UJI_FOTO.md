@@ -1,4 +1,4 @@
-# Panduan Uji Foto Asli (Lapis 1)
+# Panduan Uji Foto Asli (Lapis 1, dan Lapis 1 + 2 untuk PDF naskah)
 
 > **Putaran berikutnya (disarankan): lewat dashboard.** Masuk sebagai `distributor`, terbitkan salinan di **Distribusi**, klik **Unduh PDF (cetak)**, cetak A4, foto dengan HP, lalu masuk sebagai `investigator` dan unggah di **Investigasi → Foto / scan**. Aturan memotret di bawah tetap berlaku. Untuk kontrol: unduh lalu bandingkan dengan PDF tanpa watermark dari `python -m scripts.make_test_pages --layout naskah` (berkas `naskah_kontrol_tanpa_modulasi.pdf`).
 >

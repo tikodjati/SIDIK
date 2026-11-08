@@ -1,6 +1,7 @@
 """Pipeline citra Lapis 1: luruskan foto halaman, daftarkan ke template, baca bit dari
 pergeseran tiap kata."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -306,32 +307,19 @@ MIN_WORD_CORR = 0.5
 LINE_SCALE_RANGE = 0.07  # sisa skala horizontal per baris (foto miring kuat butuh lebar)
 
 
-def measure_slot_scores(
-    gray: np.ndarray,
-    layout: l1.Layout,
-    delta_pt: float,
-    dpi: int,
-    geom: RowGeometry | None = None,
-) -> dict[int, float]:
-    """Skor per slot (~+1 untuk bit 1, ~-1 untuk bit 0) lewat registrasi kata ke template.
+def track_lines(
+    flat: np.ndarray, layout: l1.Layout, dpi: int, geom: RowGeometry
+) -> list[tuple[int, int] | None]:
+    """Baris piksel (y0, y1) tiap baris tata letak pada citra rata; None bila tak ditemukan.
 
-    Tiap kata dicocokkan seluruh bentuknya ke render referensi (lebih tahan blur daripada
-    mengukur tepi celah). Bit = pergeseran kata ganjil terhadap rata-rata dua tetangganya,
-    sehingga geseran/skala horizontal baris saling meniadakan. Baris dilacak satu per satu
-    (posisi baris berikut dari baris sebelumnya) agar sisa distorsi vertikal tak menumpuk.
-    Slot dengan kecocokan buruk dilewati.
-    """
+    Baris dilacak satu per satu (posisi baris berikut dari baris sebelumnya) agar sisa
+    distorsi vertikal tak menumpuk."""
     k = dpi / 72
-    flat = flatten_illumination(gray)
-    geom = geom or locate_rows(flat, layout, dpi, flattened=True)
-    refs = _reference_columns(layout, dpi)
-    cx = flat.shape[1] / 2
-    amp = delta_pt * k
     ratio = 1.0  # jarak baris terukur / jarak baris template (sisa distorsi vertikal)
     prev: float | None = None
     prev_line = 0
     step = 1.0
-    scores: dict[int, float] = {}
+    out: list[tuple[int, int] | None] = []
     for li in range(len(layout.lines)):
         if prev is None:
             expect = _expected_centre(layout, li, dpi, geom, flat.shape[0])
@@ -341,13 +329,42 @@ def measure_slot_scores(
         found = _line_rows(flat, expect, geom.scale, layout, dpi)
         if found is None:
             prev, prev_line = expect, li
+            out.append(None)
             continue
         rows, centre = found
         if prev is not None:
             ratio = float(np.clip(0.7 * ratio + 0.3 * (centre - prev) / step, 0.9, 1.1))
         prev, prev_line = centre, li
-        if layout.pairs(li) == 0:
-            continue  # baris pendek (judul dsb.): ikut dilacak, tapi tak membawa bit
+        out.append(rows)
+    return out
+
+
+def measure_slot_scores(
+    gray: np.ndarray,
+    layout: l1.Layout,
+    delta_pt: float,
+    dpi: int,
+    geom: RowGeometry | None = None,
+    tracked: list[tuple[int, int] | None] | None = None,
+) -> dict[int, float]:
+    """Skor per slot (~+1 untuk bit 1, ~-1 untuk bit 0) lewat registrasi kata ke template.
+
+    Tiap kata dicocokkan seluruh bentuknya ke render referensi (lebih tahan blur daripada
+    mengukur tepi celah). Bit = pergeseran kata ganjil terhadap rata-rata dua tetangganya,
+    sehingga geseran/skala horizontal baris saling meniadakan. Slot dengan kecocokan buruk
+    dilewati. `tracked`: hasil track_lines yang sudah ada (posisi baris sama untuk semua
+    salinan naskah, jadi bisa dipakai ulang)."""
+    k = dpi / 72
+    flat = flatten_illumination(gray)
+    geom = geom or locate_rows(flat, layout, dpi, flattened=True)
+    tracked = tracked if tracked is not None else track_lines(flat, layout, dpi, geom)
+    refs = _reference_columns(layout, dpi)
+    cx = flat.shape[1] / 2
+    amp = delta_pt * k
+    scores: dict[int, float] = {}
+    for li, rows in enumerate(tracked):
+        if rows is None or layout.pairs(li) == 0:
+            continue  # baris tak ditemukan, atau baris pendek (judul dsb.) yang tak membawa bit
         img = _column_profile(flat, rows)
         spans = [(int(a * k), int(b * k)) for a, b in layout.spans[li]]
 
@@ -394,18 +411,16 @@ class PhotoResult:
     decoded: tuple[int, int] | None
 
 
-def decode_photo(
-    gray: np.ndarray,
-    layout: l1.Layout,
-    delta_pt: float,
-    dpi: int,
-    max_tries: int = 3,
-) -> PhotoResult | None:
-    """Luruskan dan baca foto halaman. Kandidat pelurusan (3 cara awal x 4 rotasi) dinilai
-    dengan ECC sampai resolusi 1/8 (affine 1/16, lalu homografi 1/16 dan 1/8; tahap yang gagal
-    konvergen dilewati). Penilaian di 1/16 saja terbukti menyingkirkan kandidat yang benar.
-    `max_tries` teratas diselaraskan penuh dan didekode berurutan. Mengembalikan yang pertama
-    terdekode, atau yang slotnya terbanyak. None bila kertas/teks sama sekali tak ditemukan."""
+def align_candidates(
+    gray: np.ndarray, layout: l1.Layout, dpi: int, max_tries: int = 3
+) -> Iterator[np.ndarray]:
+    """Kandidat foto yang sudah diselaraskan ke tata letak, terbaik dulu.
+
+    Kandidat pelurusan (3 cara awal x 4 rotasi) dinilai dengan ECC sampai resolusi 1/8
+    (affine 1/16, lalu homografi 1/16 dan 1/8; tahap yang gagal konvergen dilewati).
+    Penilaian di 1/16 saja terbukti menyingkirkan kandidat yang benar. `max_tries` teratas
+    diselaraskan penuh, satu per satu saat diminta (pemanggil berhenti begitu terdekode).
+    Kosong bila kertas/teks sama sekali tak ditemukan."""
     ref = reference_flat(layout, dpi)
     page_size = (ref.shape[1], ref.shape[0])
     ranked = []
@@ -424,9 +439,22 @@ def decode_photo(
                 flat, layout, dpi, factors=(16, 8), affine_first=True, iterations=60
             )
             ranked.append((cc, rough))
-    best: PhotoResult | None = None
     for _, rough in sorted(ranked, key=lambda c: -c[0])[:max_tries]:
-        aligned, _ = refine_alignment(rough, layout, dpi, factors=(8, 4, 2))
+        yield refine_alignment(rough, layout, dpi, factors=(8, 4, 2))[0]
+
+
+def decode_photo(
+    gray: np.ndarray,
+    layout: l1.Layout,
+    delta_pt: float,
+    dpi: int,
+    max_tries: int = 3,
+) -> PhotoResult | None:
+    """Baca foto halaman bertata letak tetap (Lapis 1 saja). Kandidat penyelarasan dicoba
+    berurutan; mengembalikan yang pertama terdekode, atau yang slotnya terbanyak. None bila
+    kertas/teks sama sekali tak ditemukan."""
+    best: PhotoResult | None = None
+    for aligned in align_candidates(gray, layout, dpi, max_tries):
         geom = locate_rows(aligned, layout, dpi)
         scores = measure_slot_scores(aligned, layout, delta_pt, dpi, geom)
         try:

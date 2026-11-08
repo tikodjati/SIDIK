@@ -243,8 +243,9 @@ export interface paths {
         };
         /**
          * Copy Pdf
-         * @description PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).
-         *     Teksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat.
+         * @description PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan
+         *     pergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.
+         *     Setiap unduhan dicatat.
          */
         get: operations["copy_pdf_api_v1_copies__copy_id__pdf_get"];
         put?: never;
@@ -306,7 +307,9 @@ export interface paths {
         put?: never;
         /**
          * Intake Photo
-         * @description Analisis foto halaman naskah lewat Lapis 1 (pergeseran spasi antar-kata).
+         * @description Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dibaca dari bentuk kata, lalu
+         *     pergeseran spasi (Lapis 1) diukur; bukti keduanya digabung. Bila tiap lapis menunjuk salinan
+         *     berbeda, hasilnya CONFLICTING_EVIDENCE.
          *
          *     Seluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama
          *     karena semua kandidat pelurusan dicoba.
@@ -534,11 +537,16 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "IDENTIFIED" | "UNREGISTERED" | "INSUFFICIENT_FORENSIC_ARTIFACTS";
+            status: "IDENTIFIED" | "UNREGISTERED" | "CONFLICTING_EVIDENCE" | "INSUFFICIENT_FORENSIC_ARTIFACTS";
             /** Observed Bits */
             observed_bits: number;
             /** Total Bits */
             total_bits: number;
+            /**
+             * Layers
+             * @description Rincian per lapis; hanya intake foto
+             */
+            layers?: components["schemas"]["LayerReading"][];
             attribution?: components["schemas"]["Attribution"] | null;
             ledger: components["schemas"]["LedgerRef"];
             /** Note */
@@ -561,6 +569,23 @@ export interface components {
              * @description Nomor perkara/kasus
              */
             case_ref?: string | null;
+        };
+        /** LayerReading */
+        LayerReading: {
+            /**
+             * Layer
+             * @enum {string}
+             */
+            layer: "L1_SPASI" | "L2_KATA";
+            /** Observed Bits */
+            observed_bits: number;
+            /** Total Bits */
+            total_bits: number;
+            /**
+             * Decoded Alone
+             * @description Lapis ini sendiri cukup untuk terdekode
+             */
+            decoded_alone: boolean;
         };
         /** LedgerEntryOut */
         LedgerEntryOut: {

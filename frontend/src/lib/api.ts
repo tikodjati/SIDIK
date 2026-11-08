@@ -8,6 +8,7 @@ export type DocumentInput = Schemas["DocumentIn"];
 export type CopyIssued = Schemas["CopyIssued"];
 export type CopyRow = Schemas["CopyOut"];
 export type IntakeResult = Schemas["IntakeResult"];
+export type LayerReading = Schemas["LayerReading"];
 export type LedgerEntry = Schemas["LedgerEntryOut"];
 export type VerifyResult = Schemas["VerifyOut"];
 export type User = Schemas["UserOut"];

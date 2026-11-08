@@ -215,21 +215,21 @@ Perintah ini meminta kata sandi tanpa menampilkannya (minimal 10 karakter). Akun
 
 ## 4. Mencoba alur utama
 
-### Foto halaman bocor (Lapis 1)
+### Foto halaman bocor (Lapis 1 + 2)
 
 1. **Sebagai `distributor`, buka Distribusi.** Tambah penerima, tambah naskah, pilih keduanya, lalu klik **Terbitkan**. Setelah itu klik **Unduh PDF (cetak)**. Terbitkan juga untuk satu penerima lain sebagai pembanding.
 2. **Buat foto bukti.** Pilih salah satu:
    - **Cetak lalu foto dengan HP** (paling realistis). Boleh miring atau terputar, tapi seluruh halaman sebaiknya terlihat dan fokusnya tajam. Kirim foto ke laptop sebagai **Dokumen** di WhatsApp atau lewat Drive, supaya tidak dikompres.
    - **Tangkapan layar PDF** (tanpa printer). Zoom sampai satu halaman memenuhi layar, lalu tangkap layar (Windows: `Win + Shift + S`) dan simpan sebagai PNG.
-3. **Sebagai `investigator`, buka Investigasi → tab Foto / scan.** Pilih foto, lalu klik **Analisis bukti**. Dalam sekitar 10–15 detik akan muncul **TARGET TERIDENTIFIKASI**, nama dan NRP penerima pemilik PDF itu, serta gambar halaman yang sudah diluruskan.
+3. **Sebagai `investigator`, buka Investigasi → tab Foto / scan.** Pilih foto, lalu klik **Analisis bukti**. Dalam sekitar 10–15 detik akan muncul **TARGET TERIDENTIFIKASI**, nama dan NRP penerima pemilik PDF itu, rincian per lapis (spasi dan pilihan kata), serta gambar halaman yang sudah diluruskan.
 
-### Teks yang diketik ulang (Lapis 2)
+### Teks yang disalin atau diketik ulang (Lapis 2)
 
-1. **Sebagai `distributor`**, salin teks dari kotak naskah setelah **Terbitkan**, atau klik **Unduh .txt**.
+1. **Sebagai `distributor`**, salin teks dari kotak naskah setelah **Terbitkan**, klik **Unduh .txt**, atau buka PDF salinan lalu salin teksnya (`Ctrl + A`, `Ctrl + C`).
 2. **Sebagai `investigator`, buka Investigasi → tab Teks / ketik ulang.** Tempel sekitar 80% teks itu (boleh diketik ulang, huruf kapital, sedikit salah ketik), lalu klik **Analisis bukti**.
 3. Satu paragraf saja, atau teks bebas, akan menghasilkan **BUKTI TIDAK CUKUP**. Itu hasil yang benar.
 
-Catatan: teks di **PDF cetak** sama untuk semua salinan. Identitasnya ada di spasi (Lapis 1), bukan di pilihan kata. Jadi mengetik ulang dari kertas cetak memang tidak menghasilkan atribusi.
+PDF salinan membawa kedua lapis: pilihan kata khusus penerima (Lapis 2) dan pergeseran spasi (Lapis 1). Jadi teks yang disalin dari PDF, atau diketik ulang dari kertas cetaknya, juga teridentifikasi.
 
 ### Uji penolakan
 
@@ -245,7 +245,7 @@ Atau tanpa Docker, dari folder `backend` dengan venv aktif:
 python -m scripts.make_test_pages --layout naskah
 ```
 
-Foto atau tangkap layar `data/watermarked_outputs/uji_foto/naskah_kontrol_tanpa_modulasi.pdf`, lalu unggah. Hasil yang diharapkan: **BUKTI TIDAK CUKUP** (sekitar 20 detik).
+Foto atau tangkap layar `data/watermarked_outputs/uji_foto/naskah_kontrol_tanpa_modulasi.pdf`, lalu unggah. Hasil yang diharapkan: **BUKTI TIDAK CUKUP** (sekitar 20 detik). Bila kata milik satu salinan digabung dengan spasi milik salinan lain (tanda manipulasi), hasilnya **BUKTI BERTENTANGAN**, juga tanpa atribusi.
 
 ### Jejak audit
 

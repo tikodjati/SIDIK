@@ -829,7 +829,7 @@
           "registry"
         ],
         "summary": "Copy Pdf",
-        "description": "PDF salinan untuk dicetak: naskah dinas dengan penanda Lapis 1 (spasi antar-kata).\nTeksnya sama untuk semua salinan; identitas hanya ada di spasinya. Setiap unduhan dicatat.",
+        "description": "PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2) dan\npergeseran spasi antar-kata (Lapis 1). Pemenggalan baris sama untuk semua salinan.\nSetiap unduhan dicatat.",
         "operationId": "copy_pdf_api_v1_copies__copy_id__pdf_get",
         "parameters": [
           {
@@ -1013,7 +1013,7 @@
           "intake"
         ],
         "summary": "Intake Photo",
-        "description": "Analisis foto halaman naskah lewat Lapis 1 (pergeseran spasi antar-kata).\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
+        "description": "Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dibaca dari bentuk kata, lalu\npergeseran spasi (Lapis 1) diukur; bukti keduanya digabung. Bila tiap lapis menunjuk salinan\nberbeda, hasilnya CONFLICTING_EVIDENCE.\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
         "operationId": "intake_photo_api_v1_intake_photo_post",
         "parameters": [
           {
@@ -1602,6 +1602,7 @@
             "enum": [
               "IDENTIFIED",
               "UNREGISTERED",
+              "CONFLICTING_EVIDENCE",
               "INSUFFICIENT_FORENSIC_ARTIFACTS"
             ],
             "title": "Status"
@@ -1613,6 +1614,14 @@
           "total_bits": {
             "type": "integer",
             "title": "Total Bits"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerReading"
+            },
+            "type": "array",
+            "title": "Layers",
+            "description": "Rincian per lapis; hanya intake foto"
           },
           "attribution": {
             "anyOf": [
@@ -1682,6 +1691,39 @@
           "text"
         ],
         "title": "IntakeTextRequest"
+      },
+      "LayerReading": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": [
+              "L1_SPASI",
+              "L2_KATA"
+            ],
+            "title": "Layer"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          },
+          "decoded_alone": {
+            "type": "boolean",
+            "title": "Decoded Alone",
+            "description": "Lapis ini sendiri cukup untuk terdekode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "observed_bits",
+          "total_bits",
+          "decoded_alone"
+        ],
+        "title": "LayerReading"
       },
       "LedgerEntryOut": {
         "properties": {

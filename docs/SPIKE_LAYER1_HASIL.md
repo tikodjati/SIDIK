@@ -71,7 +71,7 @@ Batas lain: simulasi 1280 px dengan blur σ ≥ 1,6 px masih gagal; waktu proses
 
 ## Dashboard dan optimasi kecepatan (2026-11-08)
 
-Foto kini bisa diunggah langsung di dashboard (halaman Investigasi, tab Foto). PDF salinan diunduh dari halaman Distribusi: naskah dinas demo dengan penanda Lapis 1 (δ = 0,5 pt, `SIDIK_LAYER1_DELTA_PT`), 54 baris, 160 slot (payload ±1,5x). Teks PDF sama untuk semua salinan; identitas hanya ada di spasi.
+Foto kini bisa diunggah langsung di dashboard (halaman Investigasi, tab Foto). PDF salinan diunduh dari halaman Distribusi: naskah dinas demo dengan penanda Lapis 1 (δ = 0,5 pt, `SIDIK_LAYER1_DELTA_PT`), 54 baris, 160 slot (payload ±1,5x). (Diperbarui: lihat bagian *Dokumen terpadu* di bawah; PDF kini juga membawa Lapis 2.)
 
 Regresi 11 foto asli (halaman spike, laptop pengembang, cache referensi sudah hangat seperti di server):
 
@@ -98,3 +98,23 @@ Belum: foto asli dari PDF naskah (semua foto di atas memakai halaman spike). Tim
 1. Foto asli: cetak/tampilkan PDF δ=0,3 dan 0,5, foto dengan HP tim (sudut, cahaya, jarak berbeda), jalankan ekstraktor; simpan di `data/test_leaks/`.
 2. Uji crop (50–70% halaman) dan uji persepsi.
 3. Setelah lulus: sambungkan ke endpoint `/watermark` dan `/intake`.
+
+## Dokumen terpadu Lapis 1 + 2 (2026-11-08)
+
+Celah yang ditemukan tim: teks yang disalin dari PDF salinan tidak teridentifikasi, karena PDF dulu memakai varian kata pertama untuk semua salinan (identitas hanya di spasi). Kini PDF salinan (`app/core/naskah.py`) membawa keduanya:
+
+- **Lapis 2 di PDF.** Tiap slot memakai varian kata milik penerima. Pemenggalan baris dikunci dengan lebar varian terlebar, jadi baris dan jumlah kata per baris sama untuk semua salinan. Jeda paragraf menjadi setengah baris agar muat satu halaman (56 baris, 158 slot Lapis 1, 105 bit Lapis 2).
+- **Membaca varian dari foto** tanpa OCR: setelah halaman diluruskan ke tata letak generik, tiap kata varian dicocokkan bentuknya (template matching) dengan render semua kandidatnya. Varian dipakai hanya bila korelasinya ≥ 0,5 dan unggul ≥ 0,03 dari pesaing. Tata letak salinan yang tepat lalu dipakai sebagai referensi pengukuran spasi.
+- **Gabungan bukti.** Skor kedua lapis masuk satu dekoder Reed-Solomon (soft vote). Bila Lapis 1 dan Lapis 2 masing-masing terdekode tetapi menunjuk salinan berbeda, hasilnya `CONFLICTING_EVIDENCE` (tanpa atribusi).
+
+Hasil simulasi foto (`simulate_camera`, 3 ID x 3 kondisi, plus kondisi berat):
+
+| Kasus | Hasil |
+| :--- | :--- |
+| 9 foto berwatermark (2000–3000 px, miring 10–30°, blur 0,6–1,2) | 9/9 teridentifikasi, Lapis 1 dan 2 masing-masing terbaca penuh, 10–15 dtk |
+| 3 foto kontrol (tanpa modulasi, varian pertama) | 3/3 ditolak, 21–27 dtk |
+| Kondisi berat 1600 px / 35° / blur 1,5 | Lapis 1 gagal (66 slot), Lapis 2 terbaca penuh, **teridentifikasi** lewat gabungan |
+| Kata salinan A + spasi salinan B | `CONFLICTING_EVIDENCE` |
+
+Regresi 11 foto asli halaman spike tidak berubah (6/7 terbaca, 4/4 kontrol ditolak, 0 salah). Pembacaan varian dari **foto asli** PDF terpadu belum diuji: perlu putaran foto baru dari PDF yang diunduh di dashboard.
+

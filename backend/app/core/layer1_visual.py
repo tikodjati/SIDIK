@@ -9,9 +9,9 @@ Akibatnya kata ke-(2p+1) bergeser +/-delta terhadap render tanpa modulasi, sedan
 genap tidak bergeser. Dekoder (vision_extractor) mendaftarkan tiap kata ke render referensi
 dan membaca bit dari pergeseran kata ganjil terhadap rata-rata dua tetangganya.
 
-Tata letak (`Layout`) menentukan kata per baris dan posisi baris. Ada dua: `spike_layout`
-(halaman kata acak dari spike, dipakai untuk regresi foto uji) dan `naskah_layout` (naskah dinas
-demo, dipakai untuk PDF salinan).
+Tata letak (`Layout`) menentukan kata per baris dan posisi baris: `spike_layout` (halaman kata
+acak dari spike, dipakai untuk regresi foto uji) dan tata letak naskah dinas di `app.core.naskah`
+(PDF salinan yang juga membawa Lapis 2).
 """
 
 import random
@@ -87,51 +87,6 @@ def spike_layout(seed: int = 7) -> Layout:
             lines.append(words)
     baselines = tuple(MARGIN_T + font_size + i * leading for i in range(n_lines))
     return Layout("spike", tuple(lines), baselines, font_size, leading)
-
-
-def wrap_text(text: str, font_size: float, leading: float, name: str) -> Layout:
-    """Tata letak rata kiri dari teks biasa: baris kosong = jeda satu baris, baris panjang
-    dipatahkan pada lebar halaman."""
-    space = pymupdf.get_text_length(" ", FONT, font_size)
-    lines: list[tuple[str, ...]] = []
-    baselines: list[float] = []
-    y = MARGIN_T + font_size
-    for raw in text.splitlines():
-        words = raw.split()
-        if not words:
-            y += leading
-            continue
-        current: list[str] = []
-        width = 0.0
-        for word in words:
-            w = pymupdf.get_text_length(word, FONT, font_size)
-            if current and width + space + w > MAX_LINE_W:
-                lines.append(tuple(current))
-                baselines.append(y)
-                y += leading
-                current, width = [], 0.0
-            width = w if not current else width + space + w
-            current.append(word)
-        lines.append(tuple(current))
-        baselines.append(y)
-        y += leading
-    if y - leading > PAGE_H - MARGIN_T:
-        raise ValueError(f"teks {name} tidak muat satu halaman pada {font_size} pt")
-    return Layout(name, tuple(lines), tuple(baselines), font_size, leading)
-
-
-@lru_cache(maxsize=2)
-def naskah_layout() -> Layout:
-    """Naskah dinas demo untuk PDF salinan. Varian Lapis 2 sengaja selalu varian pertama, jadi
-    teks PDF identik untuk semua salinan (referensi dekoder Lapis 1 bisa dibuat tanpa tahu
-    salinannya). Teks ini bila diketik ulang terbaca Lapis 2 sebagai bit nol semua, yang
-    ditolak pemeriksaan versi payload, jadi tidak menghasilkan atribusi palsu."""
-    from app.core.layer2_semantic import Slot, demo_template
-
-    text = "".join(
-        p.variants[0] if isinstance(p, Slot) else p for p in demo_template().parts
-    ).strip("\n")
-    return wrap_text(text, font_size=9.5, leading=11.5, name="naskah")
 
 
 def _gap_shifts(layout: Layout, frame: bytes | None, delta_pt: float) -> list[list[float]]:

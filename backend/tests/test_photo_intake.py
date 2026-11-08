@@ -5,20 +5,21 @@ import cv2
 import pytest
 
 from app.core import layer1_visual as l1
+from app.core import naskah
 from scripts.spike_layer1 import simulate_camera
 
 DPI = 300
 
 
-def _setup_copy(client) -> dict:
+def _setup_copy(client, nrp: str = "1102003912") -> dict:
     r = client.post(
         "/api/v1/recipients",
-        json={"nrp": "1102003912", "nama": "Hendro", "pangkat": "Kolonel Inf",
+        json={"nrp": nrp, "nama": "Hendro", "pangkat": "Kolonel Inf",
               "jabatan": "Asintel", "satuan": "Kodam Jaya"},
     ).json()
     d = client.post(
         "/api/v1/documents",
-        json={"nomor": "ST/FOTO/XI/2026", "judul": "Uji Foto", "klasifikasi": "RAHASIA"},
+        json={"nomor": f"ST/FOTO/{nrp}/XI/2026", "judul": "Uji Foto", "klasifikasi": "RAHASIA"},
     ).json()
     res = client.post(f"/api/v1/documents/{d['id']}/copies", json={"recipient_id": r["id"]})
     return res.json()
@@ -41,7 +42,7 @@ def _upload(client, data: bytes, content_type: str = "image/jpeg", case_ref: str
 
 @pytest.fixture(scope="module")
 def unmodulated_photo() -> bytes:
-    return _photo_of(l1.render_pdf(l1.naskah_layout(), None, 0))
+    return _photo_of(l1.render_pdf(naskah.generic_layout(), None, 0))
 
 
 def test_copy_pdf_download_is_a_pdf_and_is_logged(client):
@@ -65,9 +66,36 @@ def test_photo_of_downloaded_pdf_identifies_the_recipient(client):
     assert body["attribution"]["copy_id"] == copy["copy_id"]
     assert body["attribution"]["recipient"]["nrp"] == "1102003912"
     assert body["aligned_preview"]  # citra pelurusan untuk ditampilkan
+    layers = {r["layer"]: r for r in body["layers"]}
+    assert layers["L1_SPASI"]["decoded_alone"] and layers["L2_KATA"]["decoded_alone"]
     last = json.loads(client.get("/api/v1/ledger?newest_first=true").json()[0]["body"])
     assert last["event"] == "LEAK_INTAKE_PHOTO" and last["data"]["case_ref"] == "K-FOTO"
     assert len(last["data"]["evidence_sha256"]) == 64
+    assert [r["layer"] for r in last["data"]["layers"]] == ["L1_SPASI", "L2_KATA"]
+
+
+def test_text_copied_from_downloaded_pdf_identifies_the_recipient(client):
+    """Kasus yang dilaporkan tim: salin teks dari PDF salinan lalu tempel ke tab Teks."""
+    import pymupdf
+
+    copy = _setup_copy(client)
+    pdf = client.get(f"/api/v1/copies/{copy['copy_id']}/pdf").content
+    text = pymupdf.open(stream=pdf, filetype="pdf")[0].get_text()
+    body = client.post("/api/v1/intake/text", json={"text": text}).json()
+    assert body["status"] == "IDENTIFIED"
+    assert body["attribution"]["copy_id"] == copy["copy_id"]
+
+
+def test_photo_mixing_two_identities_is_refused_as_conflicting(client):
+    """Kata milik satu salinan, spasi milik salinan lain: tanda manipulasi, bukan atribusi."""
+    from app.config import settings
+    from app.core.payload import encode_payload
+
+    a, b = _setup_copy(client), _setup_copy(client, nrp="1102003913")
+    words = naskah.layout_for(naskah.copy_choice(a["copy_id"]))
+    mixed = l1.render_pdf(words, encode_payload(b["copy_id"]), settings.layer1_delta_pt)
+    body = _upload(client, _photo_of(mixed)).json()
+    assert body["status"] == "CONFLICTING_EVIDENCE" and body["attribution"] is None
 
 
 def test_photo_of_page_without_watermark_is_refused(client, unmodulated_photo):
@@ -80,9 +108,8 @@ def test_photo_of_page_without_watermark_is_refused(client, unmodulated_photo):
 def test_photo_of_unregistered_copy_is_not_attributed(client):
     _setup_copy(client)
     from app.config import settings
-    from app.core.payload import encode_payload
 
-    forged = l1.render_pdf(l1.naskah_layout(), encode_payload(424242), settings.layer1_delta_pt)
+    forged = naskah.copy_pdf(424242, settings.layer1_delta_pt)
     body = _upload(client, _photo_of(forged)).json()
     assert body["status"] == "UNREGISTERED" and body["attribution"] is None
 

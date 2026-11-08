@@ -6,6 +6,7 @@ import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } fro
 import {
   type CopyRow,
   type IntakeResult,
+  type LayerReading,
   getCopyText,
   intakePhoto,
   intakeText,
@@ -14,12 +15,22 @@ import {
 import { formatTime, hexId, shortHash } from "@/lib/format";
 import { simulateLeak } from "@/lib/simulate";
 
+const LAYER_LABEL: Record<LayerReading["layer"], string> = {
+  L1_SPASI: "Lapis 1 · spasi antar-kata",
+  L2_KATA: "Lapis 2 · pilihan kata",
+};
+
 const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headline: string }> = {
   IDENTIFIED: { label: "TARGET TERIDENTIFIKASI", tone: "ok", headline: "Salinan teridentifikasi" },
   UNREGISTERED: {
     label: "TIDAK TERDAFTAR",
     tone: "warn",
     headline: "Payload terbaca tetapi tidak terdaftar",
+  },
+  CONFLICTING_EVIDENCE: {
+    label: "BUKTI BERTENTANGAN",
+    tone: "danger",
+    headline: "Kedua lapis menunjuk salinan berbeda",
   },
   INSUFFICIENT_FORENSIC_ARTIFACTS: {
     label: "BUKTI TIDAK CUKUP",
@@ -108,10 +119,10 @@ function InvestigasiPanel() {
 
         <div className="flex gap-2" role="tablist" aria-label="Jenis bukti">
           <button type="button" role="tab" aria-selected={mode === "foto"} className={tabClass("foto")} onClick={() => setMode("foto")}>
-            Foto / scan (Lapis 1)
+            Foto / scan (Lapis 1 + 2)
           </button>
           <button type="button" role="tab" aria-selected={mode === "teks"} className={tabClass("teks")} onClick={() => setMode("teks")}>
-            Teks / ketik ulang (Lapis 2)
+            Teks / salin / ketik ulang (Lapis 2)
           </button>
         </div>
 
@@ -145,7 +156,7 @@ function InvestigasiPanel() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={12}
-                placeholder="Tempel teks yang beredar (boleh potongan, diketik ulang, atau berubah huruf)…"
+                placeholder="Tempel teks yang beredar: disalin dari PDF, diketik ulang, potongan, atau berubah huruf…"
                 className="w-full rounded border border-border bg-background p-3 font-mono text-xs outline-none focus:border-accent"
               />
             )}
@@ -205,7 +216,7 @@ function InvestigasiPanel() {
           {busy && (
             <p className="animate-pulse font-mono text-sm text-accent">
               {resultMode === "foto"
-                ? "Meluruskan halaman lalu mengukur spasi antar-kata…"
+                ? "Meluruskan halaman, membaca pilihan kata, lalu mengukur spasi antar-kata…"
                 : "Membaca penanda semantik…"}{" "}
               {elapsed.toFixed(0)} dtk
             </p>
@@ -226,7 +237,7 @@ function InvestigasiPanel() {
 
               <div>
                 <div className="mb-1 flex justify-between text-xs text-foreground/60">
-                  <span>{resultMode === "foto" ? "Pasangan spasi terbaca" : "Bit penanda terbaca"}</span>
+                  <span>{resultMode === "foto" ? "Penanda terbaca (gabungan)" : "Bit penanda terbaca"}</span>
                   <span className="font-mono">
                     {result.observed_bits} / {result.total_bits}
                   </span>
@@ -238,6 +249,24 @@ function InvestigasiPanel() {
                   />
                 </div>
               </div>
+
+              {result.layers && result.layers.length > 0 && (
+                <ul className="space-y-1 text-xs">
+                  {result.layers.map((r) => (
+                    <li key={r.layer} className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-foreground/70">{LAYER_LABEL[r.layer]}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-foreground/60">
+                          {r.observed_bits} / {r.total_bits}
+                        </span>
+                        <Badge tone={r.decoded_alone ? "ok" : "muted"}>
+                          {r.decoded_alone ? "TERBACA" : "KURANG"}
+                        </Badge>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               {result.attribution && (
                 <dl>
