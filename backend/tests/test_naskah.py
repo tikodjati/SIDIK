@@ -62,6 +62,24 @@ def test_clean_render_with_mixed_identities_is_a_conflict():
     assert result.conflict and result.decoded is None
 
 
+@pytest.mark.parametrize("band", [(0.5, 1.0), (0.15, 0.85)])
+def test_photo_of_part_of_the_page_is_still_attributed(band):
+    """Foto potongan (separuh bawah / 70% tengah, tanpa tepi kertas) tetap terbaca."""
+    page = l1.rasterize_gray(naskah.copy_pdf(IDS[0], DELTA), DPI)
+    h = page.shape[0]
+    crop = page[int(band[0] * h) : int(band[1] * h)]
+    result = naskah.decode_naskah_photo(crop, DELTA, DPI)
+    assert result is not None and result.decoded[0] == IDS[0] and not result.conflict
+
+
+def test_photo_of_a_few_lines_is_not_attributed_and_does_not_crash():
+    """Beberapa baris saja tak cukup bit: hasilnya tak teratribusi, bukan error."""
+    page = l1.rasterize_gray(naskah.copy_pdf(IDS[0], DELTA), DPI)
+    h = page.shape[0]
+    result = naskah.decode_naskah_photo(page[int(0.45 * h) : int(0.5 * h)], DELTA, DPI, max_tries=1)
+    assert result is None or result.decoded is None
+
+
 def test_clean_render_of_control_page_is_not_attributed():
     page = l1.rasterize_gray(l1.render_pdf(naskah.generic_layout(), None, 0), DPI)
     result = naskah.analyse_aligned(page, DELTA, DPI)
