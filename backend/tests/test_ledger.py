@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from sqlalchemy import delete, select, update
 
@@ -120,3 +121,29 @@ def test_parallel_writers_on_sqlite_file_keep_a_valid_chain(tmp_path, monkeypatc
         engine.dispose()
     finally:
         db.get_engine.cache_clear()
+
+
+def test_writer_with_a_different_key_is_refused(session, signer):
+    """Database bersama: server berkunci lain tak boleh menambah entri yang tak bisa diverifikasi
+    anggota tim lain."""
+    _fill(session, signer, 1)
+    stranger = ledger.Signer(Ed25519PrivateKey.generate())
+    with pytest.raises(ledger.LedgerKeyMismatch):
+        ledger.append_event(session, stranger, "TEST", {}, "uji")
+    session.rollback()
+    assert ledger.verify_chain(session, {signer.key_id: signer.public_key}).ok
+
+
+def test_missing_key_is_not_created_when_autocreate_is_off(tmp_path):
+    path = tmp_path / "keys" / "k.pem"
+    with pytest.raises(FileNotFoundError, match="kunci tim"):
+        ledger.Signer.load_or_create(path, create=False)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("prefix", ["postgresql://", "postgres://"])
+def test_provider_database_url_gets_the_psycopg_driver(prefix):
+    from app.config import Settings
+
+    url = Settings(database_url=f"{prefix}u:p@h.neon.tech/db?sslmode=require").database_url
+    assert url == "postgresql+psycopg://u:p@h.neon.tech/db?sslmode=require"

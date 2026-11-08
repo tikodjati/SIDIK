@@ -35,6 +35,13 @@ def _key_id(public_key: Ed25519PublicKey) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
+class LedgerKeyMismatch(RuntimeError):
+    """Kunci penandatangan di server ini berbeda dengan kunci yang menandatangani ujung rantai.
+
+    Terjadi bila beberapa server memakai database yang sama tetapi kunci berbeda; entri baru
+    tak akan bisa diverifikasi oleh server lain, jadi penulisan ditolak."""
+
+
 class Signer:
     def __init__(self, private_key: Ed25519PrivateKey) -> None:
         self._private = private_key
@@ -45,9 +52,13 @@ class Signer:
         return self._private.sign(data)
 
     @classmethod
-    def load_or_create(cls, path: str | Path) -> "Signer":
-        """Muat kunci dari PEM; buat baru bila belum ada (hanya untuk pengembangan)."""
+    def load_or_create(cls, path: str | Path, create: bool = True) -> "Signer":
+        """Muat kunci dari PEM; buat baru bila belum ada dan `create` (hanya pengembangan)."""
         path = Path(path)
+        if not path.exists() and not create:
+            raise FileNotFoundError(
+                f"kunci ledger {path} tidak ada; minta salinan kunci tim (jangan dibuat baru)"
+            )
         if path.exists():
             key = serialization.load_pem_private_key(path.read_bytes(), password=None)
             if not isinstance(key, Ed25519PrivateKey):
@@ -73,7 +84,7 @@ class Signer:
 def get_signer() -> Signer:
     from app.config import settings
 
-    return Signer.load_or_create(settings.signing_key_path)
+    return Signer.load_or_create(settings.signing_key_path, settings.signing_key_autocreate)
 
 
 def canonical_json(obj: object) -> str:
@@ -97,6 +108,11 @@ def append_event(
     if session.get_bind().dialect.name == "postgresql":
         session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _LEDGER_LOCK_KEY})
     last = session.scalars(select(LedgerEntry).order_by(LedgerEntry.seq.desc()).limit(1)).first()
+    if last is not None and last.key_id != signer.key_id:
+        raise LedgerKeyMismatch(
+            f"kunci ledger server ini ({signer.key_id}) berbeda dengan kunci rantai "
+            f"({last.key_id}); pakai berkas kunci yang sama dengan anggota tim lain"
+        )
     prev_hash = last.entry_hash if last else GENESIS_HASH
     body = canonical_json(
         {"event": event, "actor": actor, "at": datetime.now(UTC).isoformat(), "data": data}

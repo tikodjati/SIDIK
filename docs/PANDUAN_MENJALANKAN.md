@@ -183,6 +183,77 @@ python -m scripts.users seed-demo
 
 ---
 
+## 2C. Memakai database bersama tim (Neon)
+
+Dengan cara ini seluruh tim melihat penerima, naskah, salinan, akun, dan audit trail yang sama. Backend dan frontend tetap jalan di laptop masing-masing (cara A atau B di atas). Yang dipindah ke internet hanya database-nya.
+
+Dua hal wajib dipegang:
+
+- **Connection string = akses penuh ke database.** Bagikan hanya lewat jalur pribadi (chat pribadi atau pengelola kata sandi), jangan di grup, dokumen, atau git.
+- **Satu kunci ledger untuk seluruh tim.** Setiap entri audit ditandatangani kunci ledger. Laptop yang memakai kunci berbeda akan **ditolak saat menulis** ("Penulisan ditolak: kunci ledger server ini berbeda…"). Ini disengaja: tanpa penolakan itu, audit trail anggota lain akan tampak **RANTAI RUSAK**.
+
+Isi hanya **data dummy**. Jangan pernah memasukkan data personel atau naskah asli ke layanan cloud gratis.
+
+### Pengelola (satu orang, sekali saja)
+
+1. Daftar di https://neon.tech, lalu buat proyek: nama `sidik`, region **AWS Asia Pacific (Singapore)**.
+2. Di dashboard proyek, klik **Connect**. **Matikan** *Connection pooling*, lalu salin connection string-nya (diawali `postgresql://`, diakhiri `?sslmode=require…`).
+3. Buat kunci ledger tim. Dari folder `backend` dengan venv aktif:
+
+   ```bash
+   python -c "from app.core.audit_ledger import Signer; print(Signer.load_or_create('../data/keys/ledger_tim_ed25519.pem').key_id)"
+   ```
+
+   Hasilnya `data/keys/ledger_tim_ed25519.pem` (tidak ikut git). Kirim file ini ke anggota tim lewat jalur pribadi.
+4. Atur laptop sendiri seperti anggota lain (lihat di bawah), lalu buat struktur tabel dan akun admin pertama. Dari folder `backend` dengan venv aktif:
+
+   ```bash
+   python -m alembic upgrade head
+   ```
+
+   ```bash
+   python -m scripts.users create --username budi --full-name "Budi Santoso" --role admin
+   ```
+
+   Ganti dengan nama sendiri; nama pengguna huruf kecil semua. Dengan Docker, awali perintah dengan `docker compose exec api`.
+
+5. Jalankan aplikasi, masuk sebagai admin, lalu buat satu akun untuk tiap anggota di halaman **Pengguna**. Gunakan satu akun per orang, supaya audit trail mencatat siapa melakukan apa. Kirim kata sandi awal lewat jalur pribadi. Minta tiap anggota menggantinya di halaman **Akun**.
+
+### Setiap anggota
+
+Simpan file kunci dari pengelola sebagai `data/keys/ledger_tim_ed25519.pem`. Jangan menimpa `ledger_ed25519.pem`, karena kunci itu milik database lokalmu.
+
+**Dengan Docker.** Tambahkan ke file `.env` di folder `SIDIK` (buat kalau belum ada):
+
+```
+SIDIK_SHARED_DATABASE_URL=connection-string-dari-pengelola
+SIDIK_SIGNING_KEY_FILE=ledger_tim_ed25519.pem
+SIDIK_SIGNING_KEY_AUTOCREATE=false
+```
+
+Lalu `docker compose up --build -d`. Container `db` tetap jalan tetapi tidak dipakai.
+
+**Tanpa Docker.** Ganti isi `backend/.env` menjadi:
+
+```
+SIDIK_DATABASE_URL=connection-string-dari-pengelola
+SIDIK_SIGNING_KEY_PATH=../data/keys/ledger_tim_ed25519.pem
+SIDIK_SIGNING_KEY_AUTOCREATE=false
+```
+
+Lalu jalankan backend seperti biasa. Jangan menjalankan `seed-demo` di database bersama, karena akun demo dengan kata sandi acak hanya akan diketahui satu laptop.
+
+**Kembali ke database lokal:** hapus (atau beri `#` di depan) baris-baris di atas.
+
+### Hal yang perlu diketahui
+
+- Database gratis Neon "tidur" kalau tidak dipakai. Permintaan pertama sesudahnya lebih lambat sekitar 1 detik.
+- Migrasi dijalankan otomatis saat API Docker start. Setelah `git pull` yang membawa migrasi baru, cukup satu orang yang menjalankannya.
+- Demo manipulasi database (`PANDUAN_DEMO_DASHBOARD.md`) di database bersama memengaruhi seluruh tim. Kembalikan datanya setelah demo.
+- Kebocoran connection string: di dashboard Neon, buka **Roles** → **Reset password**, lalu bagikan string baru.
+
+---
+
 ## 3. Masuk ke aplikasi
 
 Buka **http://localhost:3000**. Pakai `localhost`, jangan `127.0.0.1`, karena kalau tidak, login akan tampak gagal.
@@ -200,16 +271,16 @@ Setiap akun bisa mengganti kata sandinya di halaman **Akun** (klik nama di kanan
 **Membuat akun sungguhan** (selain akun demo). Dengan Docker:
 
 ```bash
-docker compose exec api python -m scripts.users create --username NAMA --full-name "Nama Lengkap" --role admin
+docker compose exec api python -m scripts.users create --username budi --full-name "Budi Santoso" --role admin
 ```
 
 Tanpa Docker, dari folder `backend` dengan venv aktif:
 
 ```bash
-python -m scripts.users create --username NAMA --full-name "Nama Lengkap" --role admin
+python -m scripts.users create --username budi --full-name "Budi Santoso" --role admin
 ```
 
-Perintah ini meminta kata sandi tanpa menampilkannya (minimal 10 karakter). Akun berikutnya bisa dibuat admin lewat halaman **Pengguna**.
+Ganti `budi` dan `Budi Santoso` dengan milikmu. Nama pengguna hanya boleh huruf kecil, angka, `.`, `_`, atau `-` (3–32 karakter). Perintah ini meminta kata sandi tanpa menampilkannya (minimal 10 karakter). Akun berikutnya bisa dibuat admin lewat halaman **Pengguna**.
 
 ---
 
@@ -268,6 +339,7 @@ Skenario demo lengkap, termasuk demo manipulasi database, ada di [PANDUAN_DEMO_D
 | Analisis foto pertama lebih lama | Normal. Render referensi naskah dibuat sekali setelah server start (sekitar 5 detik ekstra). |
 | Tanpa Docker: backend mencoba PostgreSQL dan gagal | Perintah dijalankan di luar folder `backend`, atau `backend/.env` belum dibuat. Ulangi langkah `.env` di bagian 2B. |
 | `pip install` gagal di OpenCV atau PyMuPDF | Pakai Python 3.12 atau 3.13 (cek dengan `python --version`). |
+| "Penulisan ditolak: kunci ledger server ini berbeda…" | Database bersama dipakai dengan kunci yang salah. Simpan kunci tim sebagai `data/keys/ledger_tim_ed25519.pem` dan atur `.env` seperti di bagian 2C. |
 | Melihat log kesalahan (Docker) | `docker compose logs api --tail=50` |
 
 ---
@@ -305,5 +377,6 @@ cd ../frontend && pnpm gen:api
 | `SIDIK_SESSION_HOURS` | `8` | Lama sesi login |
 | `SIDIK_LAYER1_DELTA_PT` | `0.5` | Besar pergeseran spasi di PDF salinan (pt) |
 | `SIDIK_MAX_PHOTO_MB` | `15` | Batas ukuran foto unggahan |
+| `SIDIK_SIGNING_KEY_AUTOCREATE` | `true` | `false` untuk database bersama: tanpa berkas kunci, backend gagal jelas alih-alih membuat kunci baru |
 
 **Kunci tanda tangan ledger** dibuat otomatis di `data/keys/ledger_ed25519.pem` (tidak ikut git). Cadangkan file ini, karena tanpa kunci itu riwayat ledger lama tidak bisa diverifikasi.

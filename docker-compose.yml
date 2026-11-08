@@ -17,9 +17,12 @@ services:
   api:
     build: ./backend
     environment:
-      SIDIK_DATABASE_URL: postgresql+psycopg://sidik:${POSTGRES_PASSWORD:-sidik}@db:5432/sidik
+      # Database bersama (Neon): isi SIDIK_SHARED_DATABASE_URL di berkas .env folder ini.
+      SIDIK_DATABASE_URL: ${SIDIK_SHARED_DATABASE_URL:-postgresql+psycopg://sidik:${POSTGRES_PASSWORD:-sidik}@db:5432/sidik}
+      SIDIK_SIGNING_KEY_AUTOCREATE: ${SIDIK_SIGNING_KEY_AUTOCREATE:-true}
       SIDIK_DATA_DIR: /data
-      SIDIK_SIGNING_KEY_PATH: /data/keys/ledger_ed25519.pem
+      # Kunci ledger tim disimpan terpisah dari kunci database lokal.
+      SIDIK_SIGNING_KEY_PATH: /data/keys/${SIDIK_SIGNING_KEY_FILE:-ledger_ed25519.pem}
     volumes:
       - ./data:/data
     ports:
