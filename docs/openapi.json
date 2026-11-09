@@ -2326,6 +2326,18 @@
             "title": "Tokens",
             "description": "Honey-token Lapis 3 yang ditemukan di bukti"
           },
+          "official_similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Similarity",
+            "description": "Porsi pasangan kata yang sama dengan naskah resmi (0-1); hanya intake teks. Tinggi = salinan/ketik ulang naskah resmi; rendah = parafrase berat atau rekaan"
+          },
           "ledger": {
             "$ref": "#/components/schemas/LedgerRef"
           },

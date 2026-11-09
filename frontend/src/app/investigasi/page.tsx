@@ -51,6 +51,13 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
 
 type Mode = "foto" | "teks" | "dump";
 
+/** Arti kemiripan teks bukti dengan naskah resmi (pasangan kata berurutan yang sama). */
+function similarityMeaning(x: number): string {
+  if (x >= 0.6) return "teks disalin/diketik ulang dari naskah resmi";
+  if (x >= 0.2) return "sebagian teks berasal dari naskah resmi";
+  return "bukan salinan naskah resmi (parafrase berat atau dokumen rekaan)";
+}
+
 function AttributionRows({ a }: { a: Attribution }) {
   return (
     <dl>
@@ -326,6 +333,14 @@ function InvestigasiPanel() {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {result.official_similarity != null && (
+                <p className="text-xs text-foreground/70">
+                  Kemiripan dengan naskah resmi:{" "}
+                  <span className="font-mono font-bold">{Math.round(result.official_similarity * 100)}%</span> ·{" "}
+                  {similarityMeaning(result.official_similarity)}
+                </p>
               )}
 
               {result.attributions?.map((a, i) => (

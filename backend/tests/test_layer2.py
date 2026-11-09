@@ -79,3 +79,25 @@ def test_rejects_too_short_excerpt(template):
 def test_template_validation_rejects_bad_groups(source, message):
     with pytest.raises(TemplateError, match=message):
         parse_template(source)
+
+
+def test_official_similarity_separates_copies_from_paraphrase_and_fabrication(template):
+    from app.core.layer2_semantic import official_similarity
+
+    excerpt = (
+        "satuan wajib memantau lalu lintas jaringan militr tanpa henti. semua anomali jaringan "
+        "harus segera disampaikan kpd puskodal kodam jaya"
+    )
+    paraphrase = (
+        "Bocoran nih, Kodam Jaya lagi siaga satu, semua satuan disuruh pantau jaringan militer "
+        "terus, laporan anomali ke Puskodal."
+    )
+    fabricated = (
+        "SURAT PERINTAH RAHASIA: Panglima memerintahkan penangkapan aktivis mahasiswa dan "
+        "pembubaran demonstrasi di seluruh kota besar mulai besok pagi."
+    )
+    assert official_similarity(template, encode_text(template, encode_payload(3))) > 0.9
+    assert official_similarity(template, excerpt) >= 0.6  # ketik ulang dengan typo
+    assert official_similarity(template, paraphrase) < 0.2
+    assert official_similarity(template, fabricated) < 0.2
+    assert official_similarity(template, "Kodam Jaya siaga") is None  # terlalu pendek

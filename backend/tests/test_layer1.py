@@ -16,7 +16,7 @@ LAYOUTS = [l1.spike_layout, naskah.generic_layout]
 @pytest.mark.parametrize("make_layout", LAYOUTS)
 def test_layout_fits_on_page_and_carries_at_least_one_frame(make_layout):
     layout = make_layout()
-    assert all(spans[-1][1] <= l1.PAGE_W - l1.MARGIN_L for spans in layout.spans)
+    assert all(spans[-1][1] <= l1.PAGE_W - l1.MARGIN_L + 1e-6 for spans in layout.spans)
     assert layout.baselines[-1] <= l1.PAGE_H - l1.MARGIN_T
     assert layout.total_slots >= 104  # satu frame payload penuh
 

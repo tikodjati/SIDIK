@@ -13,6 +13,7 @@ menjadi erasure bagi Reed-Solomon.
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from itertools import product
 from pathlib import Path
 
 from rapidfuzz import fuzz, process
@@ -223,6 +224,34 @@ def _match_score(variant: str, vocab: set[str]) -> float:
         return 0.0
     best = process.extractOne(variant, vocab, scorer=fuzz.ratio)
     return float(best[1]) if best else 0.0
+
+
+MIN_SIMILARITY_WORDS = 6  # teks lebih pendek dari ini tak dinilai kemiripannya
+
+
+@lru_cache(maxsize=4)
+def _official_bigrams(template: Template) -> frozenset[tuple[str, str]]:
+    """Semua pasangan kata berurutan yang mungkin muncul di naskah resmi (varian mana pun)."""
+    alts: list[list[str]] = []
+    for p in template.parts:
+        if isinstance(p, str):
+            alts += [[w] for w in normalize(p).split() if not w.isdigit()]
+        elif isinstance(p, Slot):
+            alts.append([normalize(v) for v in p.variants])
+    return frozenset(b for a, c in zip(alts, alts[1:], strict=False) for b in product(a, c))
+
+
+def official_similarity(template: Template, text: str) -> float | None:
+    """Porsi pasangan kata berurutan di teks bukti yang juga ada di naskah resmi (pilihan varian
+    apa pun; angka diabaikan). Tinggi (~0,7-1) = teks disalin/diketik ulang dari naskah resmi,
+    walau penanda identitasnya tak cukup; rendah = bukan salinan naskah resmi (parafrase berat
+    atau dokumen rekaan). Mengukur asal teks, bukan siapa pembocornya. None bila terlalu pendek."""
+    words = [w for w in normalize(text).split() if not w.isdigit()]
+    if len(words) < MIN_SIMILARITY_WORDS:
+        return None
+    pairs = list(zip(words, words[1:], strict=False))
+    official = _official_bigrams(template)
+    return sum(p in official for p in pairs) / len(pairs)
 
 
 def extract_scores(template: Template, text: str) -> dict[int, float]:

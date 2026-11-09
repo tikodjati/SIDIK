@@ -118,6 +118,11 @@ class IntakeResult(BaseModel):
     tokens: list[TokenHit] = Field(
         default_factory=list, description="Honey-token Lapis 3 yang ditemukan di bukti"
     )
+    official_similarity: float | None = Field(
+        default=None,
+        description="Porsi pasangan kata yang sama dengan naskah resmi (0-1); hanya intake teks. "
+        "Tinggi = salinan/ketik ulang naskah resmi; rendah = parafrase berat atau rekaan",
+    )
     ledger: LedgerRef
     note: str
     aligned_preview: str | None = Field(

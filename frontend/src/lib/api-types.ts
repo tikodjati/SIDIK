@@ -788,6 +788,11 @@ export interface components {
              * @description Honey-token Lapis 3 yang ditemukan di bukti
              */
             tokens?: components["schemas"]["TokenHit"][];
+            /**
+             * Official Similarity
+             * @description Porsi pasangan kata yang sama dengan naskah resmi (0-1); hanya intake teks. Tinggi = salinan/ketik ulang naskah resmi; rendah = parafrase berat atau rekaan
+             */
+            official_similarity?: number | null;
             ledger: components["schemas"]["LedgerRef"];
             /** Note */
             note: string;

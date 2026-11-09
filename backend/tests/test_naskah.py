@@ -25,7 +25,8 @@ def test_line_breaks_are_identical_for_every_copy_and_fit_the_page():
     for layout in layouts:
         assert [len(words) for words in layout.lines] == shape
         assert layout.baselines == layouts[0].baselines
-        assert all(spans[-1][1] <= l1.PAGE_W - l1.MARGIN_L for spans in layout.spans if spans)
+        right = l1.PAGE_W - l1.MARGIN_L + 1e-6  # baris rata kanan-kiri tepat di margin
+        assert all(spans[-1][1] <= right for spans in layout.spans if spans)
         assert layout.baselines[-1] <= l1.PAGE_H - l1.MARGIN_T
     assert layouts[1].lines != layouts[2].lines  # kata varian memang berbeda per salinan
 
@@ -84,3 +85,15 @@ def test_clean_render_of_control_page_is_not_attributed():
     page = l1.rasterize_gray(l1.render_pdf(naskah.generic_layout(), None, 0), DPI)
     result = naskah.analyse_aligned(page, DELTA, DPI)
     assert result.decoded is None
+
+
+def test_paragraph_lines_are_justified_and_last_lines_are_not():
+    """Format naskah dinas: baris yang dipatahkan rata kanan-kiri, baris akhir paragraf kiri."""
+    layout = naskah.layout_for(naskah.copy_choice(IDS[0]))
+    right = l1.PAGE_W - l1.MARGIN_L
+    assert any(layout.justified)
+    for spans, justified in zip(layout.spans, layout.justified, strict=True):
+        if justified:
+            assert abs(spans[-1][1] - right) < 1e-6
+        else:
+            assert spans[-1][1] < right

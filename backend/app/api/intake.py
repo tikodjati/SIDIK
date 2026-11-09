@@ -12,7 +12,7 @@ from app.config import settings
 from app.core import layer3_honeytoken as l3
 from app.core import layer4_store, naskah
 from app.core.audit_ledger import Signer, append_event, get_signer
-from app.core.layer2_semantic import demo_template, extract_scores
+from app.core.layer2_semantic import demo_template, extract_scores, official_similarity
 from app.core.payload import PayloadDecodeError, decode_scores
 from app.db import get_session
 from app.db.models import Copy, DataExport, User
@@ -172,10 +172,12 @@ def intake_text(
         ),
         _token_layer(hits),
     ]
-    return _attribute(
+    result = _attribute(
         session, signer, user, "LEAK_INTAKE_TEXT", decoded, body.text.encode("utf-8"),
         len(scores), template.capacity_bits, body.case_ref, layers=layers, hits=hits,
     )
+    result.official_similarity = official_similarity(template, body.text)
+    return result
 
 
 def _read_photo(data: bytes) -> np.ndarray:

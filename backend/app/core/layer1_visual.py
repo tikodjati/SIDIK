@@ -9,7 +9,8 @@ Akibatnya kata ke-(2p+1) bergeser +/-delta terhadap render tanpa modulasi, sedan
 genap tidak bergeser. Dekoder (vision_extractor) mendaftarkan tiap kata ke render referensi
 dan membaca bit dari pergeseran kata ganjil terhadap rata-rata dua tetangganya.
 
-Tata letak (`Layout`) menentukan kata per baris dan posisi baris: `spike_layout` (halaman kata
+Tata letak (`Layout`) menentukan kata per baris, posisi baris, dan perataan (kiri, atau kanan-kiri
+untuk naskah dinas): `spike_layout` (halaman kata
 acak dari spike, dipakai untuk regresi foto uji) dan tata letak naskah dinas di `app.core.naskah`
 (PDF salinan yang juga membawa Lapis 2).
 """
@@ -34,18 +35,33 @@ class Layout:
     baselines: tuple[float, ...]  # pt dari atas halaman
     font_size: float
     leading: float
+    # baris rata kanan-kiri (naskah dinas); None = semua rata kiri
+    justified: tuple[bool, ...] | None = None
+
+    @cached_property
+    def gaps(self) -> tuple[float, ...]:
+        """Lebar spasi dasar tiap baris (pt) sebelum modulasi: spasi biasa, atau pada baris rata
+        kanan-kiri dilebarkan merata sampai kata terakhir menyentuh margin kanan."""
+        space = pymupdf.get_text_length(" ", FONT, self.font_size)
+        out = []
+        for li, words in enumerate(self.lines):
+            if self.justified and self.justified[li] and len(words) > 1:
+                ink = sum(pymupdf.get_text_length(w, FONT, self.font_size) for w in words)
+                out.append(max(space, (MAX_LINE_W - ink) / (len(words) - 1)))
+            else:
+                out.append(space)
+        return tuple(out)
 
     @cached_property
     def spans(self) -> tuple[tuple[tuple[float, float], ...], ...]:
         """Rentang x (pt) tiap kata pada render tanpa modulasi."""
-        space = pymupdf.get_text_length(" ", FONT, self.font_size)
         out = []
-        for words in self.lines:
+        for li, words in enumerate(self.lines):
             x, spans = MARGIN_L, []
             for word in words:
                 width = pymupdf.get_text_length(word, FONT, self.font_size)
                 spans.append((x, x + width))
-                x += width + space
+                x += width + self.gaps[li]
             out.append(tuple(spans))
         return tuple(out)
 
@@ -103,16 +119,17 @@ def _gap_shifts(layout: Layout, frame: bytes | None, delta_pt: float) -> list[li
 
 
 def render_pdf(layout: Layout, frame: bytes | None, delta_pt: float) -> bytes:
-    """Render tata letak; `frame=None` menghasilkan referensi tanpa modulasi."""
+    """Render tata letak; `frame=None` menghasilkan referensi tanpa modulasi. Pada baris rata
+    kanan-kiri modulasi ditambahkan di atas spasi yang sudah dilebarkan (pasangan +/-delta tak
+    mengubah lebar baris, jadi margin kanan tetap lurus)."""
     shifts = _gap_shifts(layout, frame, delta_pt)
-    space = pymupdf.get_text_length(" ", FONT, layout.font_size)
     doc = pymupdf.open()
     page = doc.new_page(width=PAGE_W, height=PAGE_H)
     for li, words in enumerate(layout.lines):
         x, y = MARGIN_L, layout.baselines[li]
         for wi, word in enumerate(words):
             page.insert_text((x, y), word, fontname=FONT, fontsize=layout.font_size)
-            x += pymupdf.get_text_length(word, FONT, layout.font_size) + space
+            x += pymupdf.get_text_length(word, FONT, layout.font_size) + layout.gaps[li]
             if wi < len(words) - 1:
                 x += shifts[li][wi]
     return doc.tobytes()

@@ -1,4 +1,5 @@
 """Naskah terpadu: satu PDF salinan membawa Lapis 1 (spasi antar-kata) dan Lapis 2 (pilihan kata).
+Format rata kanan-kiri seperti naskah dinas; baris akhir paragraf rata kiri.
 
 Pemenggalan baris dikunci memakai varian terlebar tiap slot, jadi semua salinan punya baris
 dan jumlah kata per baris yang sama; yang berbeda hanya kata varian dan spasinya. Akibatnya:
@@ -49,6 +50,7 @@ MIN_MARGIN = 0.03  # selisih minimum varian terbaik dengan pesaingnya
 class Structure:
     lines: tuple[tuple[Token, ...], ...]
     baselines: tuple[float, ...]
+    justified: tuple[bool, ...]  # rata kanan-kiri: semua baris kecuali baris akhir paragraf
 
 
 def _piece_width(piece: Piece, widest: bool) -> float:
@@ -103,6 +105,7 @@ def structure() -> Structure:
     space = pymupdf.get_text_length(" ", l1.FONT, FONT_SIZE)
     lines: list[tuple[Token, ...]] = []
     baselines: list[float] = []
+    justified: list[bool] = []
     y = l1.MARGIN_T + FONT_SIZE
     for paragraph in _paragraphs():
         if not paragraph:
@@ -117,16 +120,18 @@ def structure() -> Structure:
             if current and width + space + w > l1.MAX_LINE_W:
                 lines.append(tuple(current))
                 baselines.append(y)
+                justified.append(True)
                 y += LEADING
                 current, width = [], 0.0
             width = w if not current else width + space + w
             current.append(token)
         lines.append(tuple(current))
         baselines.append(y)
+        justified.append(False)  # baris akhir paragraf (dan judul) tetap rata kiri
         y += LEADING
     if y - LEADING > l1.PAGE_H - l1.MARGIN_T:
         raise ValueError(f"naskah tidak muat satu halaman pada {FONT_SIZE} pt")
-    return Structure(tuple(lines), tuple(baselines))
+    return Structure(tuple(lines), tuple(baselines), tuple(justified))
 
 
 def _token_text(
@@ -150,7 +155,7 @@ def layout_for(choice: tuple[int, ...], tokens: tuple[str, ...] | None = None) -
     sama untuk semua salinan)."""
     st = structure()
     lines = tuple(tuple(_token_text(t, choice, tokens) for t in line) for line in st.lines)
-    return l1.Layout("naskah", lines, st.baselines, FONT_SIZE, LEADING)
+    return l1.Layout("naskah", lines, st.baselines, FONT_SIZE, LEADING, st.justified)
 
 
 def generic_layout() -> l1.Layout:
