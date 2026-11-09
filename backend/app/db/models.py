@@ -1,8 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -118,3 +119,75 @@ class UserSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship()
+
+
+class Personnel(Base):
+    """Data personel (demo pengganti SISFO). Sebagian baris adalah honey-record tertanam yang
+    tak bisa dibedakan dari luar; katalognya hanya ada di `honey_records`."""
+
+    __tablename__ = "personnel"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nrp: Mapped[str] = mapped_column(String(32), unique=True)
+    nama: Mapped[str] = mapped_column(String(128))
+    pangkat: Mapped[str] = mapped_column(String(64))
+    satuan: Mapped[str] = mapped_column(String(128), index=True)
+    nik: Mapped[str] = mapped_column(String(16), unique=True)
+    no_hp: Mapped[str] = mapped_column(String(16), unique=True)
+    tanggal_lahir: Mapped[date] = mapped_column(Date)
+
+
+class DataExport(Base):
+    """Satu ekspor data personel oleh petugas; memuat honey-record khusus ekspor ini."""
+
+    __tablename__ = "data_exports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(32))
+    satuan: Mapped[str | None] = mapped_column(String(128), default=None)  # None = semua satuan
+    purpose: Mapped[str] = mapped_column(String(256))
+    row_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class HoneyRecord(Base):
+    """Honey-record Lapis 4: persona rekaan. `export_id` None = tertanam di tabel personel."""
+
+    __tablename__ = "honey_records"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    export_id: Mapped[int | None] = mapped_column(
+        ForeignKey("data_exports.id"), default=None, index=True
+    )
+    nrp: Mapped[str] = mapped_column(String(32), unique=True)
+    nama: Mapped[str] = mapped_column(String(128))
+    pangkat: Mapped[str] = mapped_column(String(64))
+    satuan: Mapped[str] = mapped_column(String(128))
+    nik: Mapped[str] = mapped_column(String(16), unique=True)
+    no_hp: Mapped[str] = mapped_column(String(16), unique=True)
+    tanggal_lahir: Mapped[date] = mapped_column(Date)
+
+    export: Mapped[DataExport | None] = relationship()
+
+
+class PublicCorpus(Base):
+    """Kumpulan data publik/bocoran lama yang sudah dikenal (untuk deteksi daur ulang)."""
+
+    __tablename__ = "public_corpora"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(128), unique=True)
+    note: Mapped[str] = mapped_column(String(256), default="")
+    entries: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CorpusFingerprint(Base):
+    """Hash SHA-256 satu identitas (NIK/HP) dari korpus publik; data aslinya tidak disimpan."""
+
+    __tablename__ = "corpus_fingerprints"
+    __table_args__ = (UniqueConstraint("corpus_id", "fp"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    corpus_id: Mapped[int] = mapped_column(ForeignKey("public_corpora.id"))
+    fp: Mapped[str] = mapped_column(String(64), index=True)

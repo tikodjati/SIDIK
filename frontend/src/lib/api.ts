@@ -11,6 +11,10 @@ export type IntakeResult = Schemas["IntakeResult"];
 export type LayerReading = Schemas["LayerReading"];
 export type Attribution = Schemas["Attribution"];
 export type TokenHit = Schemas["TokenHit"];
+export type PersonnelSummary = Schemas["PersonnelSummary"];
+export type DataExport = Schemas["ExportOut"];
+export type Corpus = Schemas["CorpusOut"];
+export type DumpResult = Schemas["DumpResult"];
 export type LedgerEntry = Schemas["LedgerEntryOut"];
 export type VerifyResult = Schemas["VerifyOut"];
 export type User = Schemas["UserOut"];
@@ -61,7 +65,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(detail, res.status);
   }
   if (res.status === 204) return undefined as T;
-  if (res.headers.get("content-type")?.startsWith("application/pdf")) return res.blob() as Promise<T>;
+  const type = res.headers.get("content-type") ?? "";
+  if (type.startsWith("application/pdf") || type.startsWith("text/csv")) return res.blob() as Promise<T>;
   return res.json() as Promise<T>;
 }
 
@@ -105,6 +110,27 @@ export function intakePhoto(photo: File, caseRef?: string) {
   form.append("photo", photo);
   if (caseRef) form.append("case_ref", caseRef);
   return request<IntakeResult>("/api/v1/intake/photo", { method: "POST", body: form });
+}
+
+export const getPersonnelSummary = () => request<PersonnelSummary>("/api/v1/personnel/summary");
+export const seedPersonnel = () =>
+  post<{ rows: number; honey_records: number }>("/api/v1/personnel/seed-demo", {});
+export const exportPersonnel = (satuan: string | null, purpose: string) =>
+  post<Blob>("/api/v1/personnel/exports", { satuan, purpose });
+export const listExports = () => request<DataExport[]>("/api/v1/personnel/exports");
+export const listCorpora = () => request<Corpus[]>("/api/v1/corpora");
+export function registerCorpus(file: File, label: string, note: string) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("label", label);
+  form.append("note", note);
+  return request<Corpus>("/api/v1/corpora", { method: "POST", body: form });
+}
+export function intakeDump(file: File, caseRef?: string) {
+  const form = new FormData();
+  form.append("file", file);
+  if (caseRef) form.append("case_ref", caseRef);
+  return request<DumpResult>("/api/v1/intake/dump", { method: "POST", body: form });
 }
 
 /** Simpan Blob sebagai berkas unduhan di peramban. */

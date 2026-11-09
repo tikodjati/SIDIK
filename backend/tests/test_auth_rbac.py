@@ -38,6 +38,13 @@ ALLOWED = {
     ("POST", "/api/v1/intake/text"): {A, INV},
     ("GET", "/api/v1/ledger"): {A, INV},
     ("GET", "/api/v1/ledger/verify"): {A, INV},
+    ("GET", "/api/v1/personnel/summary"): {A, D},
+    ("POST", "/api/v1/personnel/seed-demo"): {A},
+    ("POST", "/api/v1/personnel/exports"): {A, D},
+    ("GET", "/api/v1/personnel/exports"): {A, D, INV},
+    ("POST", "/api/v1/corpora"): {A},
+    ("GET", "/api/v1/corpora"): {A, INV},
+    ("POST", "/api/v1/intake/dump"): {A, INV},
 }
 
 

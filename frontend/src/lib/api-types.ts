@@ -322,6 +322,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/intake/dump": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Intake Dump
+         * @description Periksa klaim kebocoran basis data (Lapis 4): cari honey-record (bukti pasti dan sumber
+         *     ekspornya), lalu bandingkan identitas dengan data personel dan korpus data publik lama untuk
+         *     membedakan kebocoran asli dari daur ulang atau rekaan.
+         */
+        post: operations["intake_dump_api_v1_intake_dump_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ledger": {
         parameters: {
             query?: never;
@@ -354,6 +376,88 @@ export interface paths {
         get: operations["verify_api_v1_ledger_verify_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/personnel/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Personnel Summary */
+        get: operations["personnel_summary_api_v1_personnel_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/personnel/seed-demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Demo
+         * @description Isi data personel demo (rekaan) beserta honey-record tertanam. Sekali saja; ditolak bila
+         *     data personel sudah ada.
+         */
+        post: operations["seed_demo_api_v1_personnel_seed_demo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/personnel/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Exports */
+        get: operations["list_exports_api_v1_personnel_exports_get"];
+        put?: never;
+        /**
+         * Export Personnel
+         * @description Ekspor data personel ke CSV. Setiap ekspor diberi honey-record uniknya sendiri dan dicatat
+         *     di ledger (akun, satuan, keperluan), sehingga dump yang bocor dapat ditelusuri ke ekspor ini.
+         */
+        post: operations["export_personnel_api_v1_personnel_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corpora": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Corpora */
+        get: operations["list_corpora_api_v1_corpora_get"];
+        put?: never;
+        /**
+         * Register Corpus
+         * @description Daftarkan korpus data publik lama untuk mendeteksi dump daur ulang. Hanya hash NIK dan
+         *     nomor HP yang disimpan; isi berkas dibuang.
+         */
+        post: operations["register_corpus_api_v1_corpora_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -398,6 +502,16 @@ export interface components {
              */
             issued_at: string;
         };
+        /** Body_intake_dump_api_v1_intake_dump_post */
+        Body_intake_dump_api_v1_intake_dump_post: {
+            /**
+             * File
+             * @description Data dump yang beredar (CSV, SQL, JSON, atau teks)
+             */
+            file: string;
+            /** Case Ref */
+            case_ref?: string | null;
+        };
         /** Body_intake_photo_api_v1_intake_photo_post */
         Body_intake_photo_api_v1_intake_photo_post: {
             /**
@@ -407,6 +521,21 @@ export interface components {
             photo: string;
             /** Case Ref */
             case_ref?: string | null;
+        };
+        /** Body_register_corpus_api_v1_corpora_post */
+        Body_register_corpus_api_v1_corpora_post: {
+            /**
+             * File
+             * @description Data publik/bocoran lama yang sudah dikenal
+             */
+            file: string;
+            /** Label */
+            label: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -468,6 +597,22 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** CorpusOut */
+        CorpusOut: {
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Note */
+            note: string;
+            /** Entries */
+            entries: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** DocumentIn */
         DocumentIn: {
             /** Nomor */
@@ -503,6 +648,80 @@ export interface components {
              */
             created_at: string;
         };
+        /** DumpResult */
+        DumpResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "AUTHENTIC_LEAK" | "UNTRACED_MATCH" | "RECYCLED_PUBLIC" | "FABRICATED" | "NOT_FROM_OUR_DB" | "INSUFFICIENT_DATA";
+            identifiers: components["schemas"]["IdentifierCounts"];
+            /**
+             * Personnel Ratio
+             * @description Porsi identitas dump yang ada di data personel
+             */
+            personnel_ratio: number;
+            /**
+             * Corpus Ratio
+             * @description Porsi identitas yang ada di korpus data publik
+             */
+            corpus_ratio: number;
+            /** Corpus Label */
+            corpus_label?: string | null;
+            /**
+             * Invalid Ratio
+             * @description Porsi NIK berformat tidak valid
+             */
+            invalid_ratio: number;
+            /** Sources */
+            sources?: components["schemas"]["DumpSource"][];
+            ledger: components["schemas"]["LedgerRef"];
+            /** Note */
+            note: string;
+        };
+        /** DumpSource */
+        DumpSource: {
+            /** @description Ekspor asal honey-record; null = honey-record tertanam di basis data */
+            export: components["schemas"]["ExportOut"] | null;
+            /** Matched Rows */
+            matched_rows: number;
+            /**
+             * Proven
+             * @description Bukti cukup (>= 2 baris, atau 1 baris cocok di >= 2 kolom)
+             */
+            proven: boolean;
+        };
+        /** ExportOut */
+        ExportOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Satuan */
+            satuan: string | null;
+            /** Purpose */
+            purpose: string;
+            /** Row Count */
+            row_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ExportRequest */
+        ExportRequest: {
+            /**
+             * Satuan
+             * @description Kosong = semua satuan
+             */
+            satuan?: string | null;
+            /**
+             * Purpose
+             * @description Keperluan ekspor (dicatat)
+             */
+            purpose: string;
+        };
         /** ExtractRequest */
         ExtractRequest: {
             /**
@@ -531,6 +750,15 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IdentifierCounts */
+        IdentifierCounts: {
+            /** Nik */
+            nik: number;
+            /** No Hp */
+            no_hp: number;
+            /** Nrp */
+            nrp: number;
         };
         /** IntakeResult */
         IntakeResult: {
@@ -628,6 +856,13 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** PersonnelSummary */
+        PersonnelSummary: {
+            /** Total */
+            total: number;
+            /** By Satuan */
+            by_satuan: components["schemas"]["SatuanCount"][];
+        };
         /** RecipientIn */
         RecipientIn: {
             /** Nrp */
@@ -655,6 +890,23 @@ export interface components {
             satuan: string;
             /** Id */
             id: number;
+        };
+        /** SatuanCount */
+        SatuanCount: {
+            /** Satuan */
+            satuan: string;
+            /** Count */
+            count: number;
+        };
+        /** SeedResult */
+        SeedResult: {
+            /** Rows */
+            rows: number;
+            /**
+             * Honey Records
+             * @description Honey-record tertanam di antara baris personel
+             */
+            honey_records: number;
         };
         /** TokenHit */
         TokenHit: {
@@ -1406,6 +1658,41 @@ export interface operations {
             };
         };
     };
+    intake_dump_api_v1_intake_dump_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_intake_dump_api_v1_intake_dump_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DumpResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_entries_api_v1_ledger_get: {
         parameters: {
             query?: {
@@ -1459,6 +1746,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerifyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    personnel_summary_api_v1_personnel_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonnelSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_demo_api_v1_personnel_seed_demo_post: {
+        parameters: {
+            query?: {
+                count?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_exports_api_v1_personnel_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_personnel_api_v1_personnel_exports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_corpora_api_v1_corpora_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorpusOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_corpus_api_v1_corpora_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_register_corpus_api_v1_corpora_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorpusOut"];
                 };
             };
             /** @description Validation Error */

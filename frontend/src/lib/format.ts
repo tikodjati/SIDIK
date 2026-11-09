@@ -26,9 +26,9 @@ export function parseBody(entry: LedgerEntry): LedgerBody | null {
   }
 }
 
-/** Peristiwa analisis bukti (teks dan foto) di buku besar. */
+/** Peristiwa analisis bukti (teks, foto, dan dump data) di buku besar. */
 export const isIntake = (event?: string) =>
-  event === "LEAK_INTAKE_TEXT" || event === "LEAK_INTAKE_PHOTO";
+  event === "LEAK_INTAKE_TEXT" || event === "LEAK_INTAKE_PHOTO" || event === "LEAK_INTAKE_DUMP";
 
 export function summarize(body: LedgerBody | null): string {
   if (!body) return "(isi tidak terbaca)";
@@ -38,6 +38,19 @@ export function summarize(body: LedgerBody | null): string {
   }
   if (body.event === "COPY_EXPORTED") {
     return `PDF salinan ${hexId(Number(d.copy_id))} diunduh (${String(d.document_nomor)})`;
+  }
+  if (body.event === "DATA_EXPORTED") {
+    return `ekspor data personel #${String(d.export_id)} · ${d.satuan ? String(d.satuan) : "semua satuan"} · ${String(d.rows)} baris · ${String(d.purpose)}`;
+  }
+  if (body.event === "PERSONNEL_SEEDED") return `data personel demo diisi (${String(d.rows)} baris)`;
+  if (body.event === "CORPUS_REGISTERED") {
+    return `korpus data publik "${String(d.label)}" (${String(d.entries)} identitas)`;
+  }
+  if (body.event === "LEAK_INTAKE_DUMP") {
+    const ids = Array.isArray(d.export_ids) && d.export_ids.length ? ` · ekspor #${d.export_ids.join(", #")}` : "";
+    const db = d.db_direct ? " · DB langsung" : "";
+    const ref = d.case_ref ? ` · perkara ${String(d.case_ref)}` : "";
+    return `dump: ${String(d.status)}${ids}${db} · ${String(d.identifiers)} identitas${ref}`;
   }
   if (isIntake(body.event)) {
     const channel = body.event === "LEAK_INTAKE_PHOTO" ? "foto" : "teks";

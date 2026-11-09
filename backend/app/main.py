@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, intake, layer2, ledger, registry, users
+from app.api import auth, intake, layer2, ledger, personnel, registry, users
 from app.config import settings
 from app.core.audit_ledger import LedgerKeyMismatch
 
@@ -26,6 +26,7 @@ app.include_router(layer2.router)
 app.include_router(registry.router)
 app.include_router(intake.router)
 app.include_router(ledger.router)
+app.include_router(personnel.router)
 
 
 @app.exception_handler(LedgerKeyMismatch)

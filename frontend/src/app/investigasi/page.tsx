@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RequireRole, useAuth } from "@/components/AuthProvider";
+import DumpReport from "@/components/DumpReport";
 import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } from "@/components/ui";
 import {
   type Attribution,
   type CopyRow,
+  type DumpResult,
   type IntakeResult,
   type LayerReading,
   getCopyText,
+  intakeDump,
   intakePhoto,
   intakeText,
   listCopies,
@@ -46,7 +49,7 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
   },
 };
 
-type Mode = "foto" | "teks";
+type Mode = "foto" | "teks" | "dump";
 
 function AttributionRows({ a }: { a: Attribution }) {
   return (
@@ -75,6 +78,8 @@ function InvestigasiPanel() {
   const [mode, setMode] = useState<Mode>("foto");
   const [text, setText] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [dumpFile, setDumpFile] = useState<File | null>(null);
+  const [dumpResult, setDumpResult] = useState<DumpResult | null>(null);
   const [caseRef, setCaseRef] = useState("");
   const [result, setResult] = useState<IntakeResult | null>(null);
   const [resultMode, setResultMode] = useState<Mode>("foto");
@@ -110,10 +115,12 @@ function InvestigasiPanel() {
     setElapsed(0);
     setError(null);
     setResult(null);
+    setDumpResult(null);
     setResultMode(mode);
     try {
       const ref = caseRef.trim();
-      setResult(mode === "foto" && photo ? await intakePhoto(photo, ref) : await intakeText(text, ref));
+      if (mode === "dump" && dumpFile) setDumpResult(await intakeDump(dumpFile, ref));
+      else setResult(mode === "foto" && photo ? await intakePhoto(photo, ref) : await intakeText(text, ref));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analisis gagal.");
     } finally {
@@ -132,7 +139,7 @@ function InvestigasiPanel() {
     }
   }
 
-  const ready = mode === "foto" ? photo !== null : text.trim() !== "";
+  const ready = mode === "foto" ? photo !== null : mode === "dump" ? dumpFile !== null : text.trim() !== "";
   const status = result ? STATUS[result.status] : null;
   const meter = result ? Math.round((result.observed_bits / result.total_bits) * 100) : 0;
   const tabClass = (m: Mode) =>
@@ -152,11 +159,32 @@ function InvestigasiPanel() {
           <button type="button" role="tab" aria-selected={mode === "teks"} className={tabClass("teks")} onClick={() => setMode("teks")}>
             Teks / ketik ulang / parafrase (Lapis 2 + 3)
           </button>
+          <button type="button" role="tab" aria-selected={mode === "dump"} className={tabClass("dump")} onClick={() => setMode("dump")}>
+            Data dump (Lapis 4)
+          </button>
         </div>
 
-        <Card title={mode === "foto" ? "Foto halaman yang bocor" : "Teks yang bocor"}>
+        <Card title={mode === "foto" ? "Foto halaman yang bocor" : mode === "dump" ? "Data dump yang beredar" : "Teks yang bocor"}>
           <div className="space-y-3">
-            {mode === "foto" ? (
+            {mode === "dump" ? (
+              <>
+                <input
+                  type="file"
+                  accept=".csv,.sql,.json,.txt,text/plain,text/csv,application/json"
+                  aria-label="Berkas dump kebocoran"
+                  onChange={(e) => {
+                    setDumpFile(e.target.files?.[0] ?? null);
+                    setDumpResult(null);
+                  }}
+                  className="block w-full text-sm file:mr-3 file:rounded file:border file:border-accent file:bg-accent/15 file:px-3 file:py-1.5 file:font-mono file:text-xs file:font-bold file:uppercase file:text-accent"
+                />
+                <p className="text-xs text-foreground/60">
+                  Berkas CSV, SQL, JSON, atau teks yang diklaim sebagai bocoran basis data. Sistem
+                  mencari honey-record, lalu membandingkan identitasnya dengan data personel dan
+                  korpus data publik lama.
+                </p>
+              </>
+            ) : mode === "foto" ? (
               <>
                 <input
                   type="file"
@@ -245,11 +273,14 @@ function InvestigasiPanel() {
             <p className="animate-pulse font-mono text-sm text-accent">
               {resultMode === "foto"
                 ? "Meluruskan halaman, membaca pilihan kata dan angka token, lalu mengukur spasi…"
-                : "Membaca pilihan kata dan mencari honey-token…"}{" "}
+                : resultMode === "dump"
+                  ? "Mencari honey-record dan mencocokkan identitas…"
+                  : "Membaca pilihan kata dan mencari honey-token…"}{" "}
               {elapsed.toFixed(0)} dtk
             </p>
           )}
-          {!busy && !result && (
+          {!busy && dumpResult && <DumpReport result={dumpResult} elapsed={elapsed} />}
+          {!busy && !result && !dumpResult && (
             <p className="text-sm text-foreground/60">
               Unggah foto atau tempel teks, lalu jalankan analisis. Sistem hanya memberi atribusi
               bila bukti cukup dan salinan terdaftar; selain itu ia menolak.

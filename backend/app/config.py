@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # Amplitudo modulasi spasi Lapis 1 pada PDF salinan (pt). Uji foto asli: 0,3 dan 0,5 terbaca.
     layer1_delta_pt: float = 0.5
     max_photo_mb: int = 15
+    max_dump_mb: int = 20  # berkas dump / korpus data publik (Lapis 4)
 
 
     @field_validator("database_url")

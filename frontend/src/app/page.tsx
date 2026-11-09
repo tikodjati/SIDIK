@@ -134,6 +134,14 @@ export default function Home() {
                 : daftarkan penerima dan naskah, terbitkan salinan.
               </li>
             )}
+            {seesRegistry(role) && (
+              <li>
+                <Link className="text-accent hover:underline" href="/personel">
+                  Data Personel
+                </Link>
+                : ekspor data personel (bersisip honey-record).
+              </li>
+            )}
             {seesAudit(role) && (
               <>
                 <li>

@@ -7,14 +7,16 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN, INVESTIGATOR, require_roles
+from app.api.personnel import read_upload
 from app.config import settings
 from app.core import layer3_honeytoken as l3
-from app.core import naskah
+from app.core import layer4_store, naskah
 from app.core.audit_ledger import Signer, append_event, get_signer
 from app.core.layer2_semantic import demo_template, extract_scores
 from app.core.payload import PayloadDecodeError, decode_scores
 from app.db import get_session
-from app.db.models import Copy, User
+from app.db.models import Copy, DataExport, User
+from app.models.personnel_models import DumpResult, DumpSource, ExportOut, IdentifierCounts
 from app.models.registry_models import (
     Attribution,
     IntakeResult,
@@ -240,3 +242,75 @@ def intake_photo(
     if found is not None:
         result.aligned_preview = _preview(found.aligned)
     return result
+
+
+DUMP_NOTES = {
+    "AUTHENTIC_LEAK": "Dump memuat honey-record: data benar berasal dari basis data kita. Sumber "
+    "menunjukkan ekspor/akses yang bocor, bukan putusan bersalah.",
+    "UNTRACED_MATCH": "Identitas cocok dengan data personel kita, tetapi honey-record tidak cukup: "
+    "kemungkinan data asli dari sumber tak terlacak (mis. potongan kecil). Tidak ada atribusi.",
+    "RECYCLED_PUBLIC": "Sebagian besar identitas berasal dari data publik/bocoran lama yang sudah "
+    "dikenal: indikasi daur ulang (psywar/hoaks), bukan kebocoran basis data kita.",
+    "FABRICATED": "Banyak NIK berformat tidak valid: indikasi data rekaan (psywar/hoaks).",
+    "NOT_FROM_OUR_DB": "Identitas tidak cocok dengan data personel kita: tidak terbukti berasal "
+    "dari basis data ini.",
+    "INSUFFICIENT_DATA": "Tidak ditemukan NIK, nomor HP, atau NRP di berkas.",
+}
+
+
+@router.post("/dump", response_model=DumpResult)
+def intake_dump(
+    file: UploadFile = File(description="Data dump yang beredar (CSV, SQL, JSON, atau teks)"),
+    case_ref: str | None = Form(default=None, max_length=64),
+    session: Session = Depends(get_session),
+    signer: Signer = Depends(get_signer),
+    user: User = Depends(_investigator),
+) -> DumpResult:
+    """Periksa klaim kebocoran basis data (Lapis 4): cari honey-record (bukti pasti dan sumber
+    ekspornya), lalu bandingkan identitas dengan data personel dan korpus data publik lama untuk
+    membedakan kebocoran asli dari daur ulang atau rekaan."""
+    data = read_upload(file)
+    report = layer4_store.analyse_dump(session, data.decode("utf-8", errors="replace"))
+    proven = set(report.proven)
+    counts: dict[int | None, int] = {}
+    for hit in report.hits:
+        counts[hit.source] = counts.get(hit.source, 0) + 1
+    sources = [
+        DumpSource(
+            export=ExportOut.model_validate(session.get(DataExport, s)) if s is not None else None,
+            matched_rows=n,
+            proven=s in proven,
+        )
+        for s, n in sorted(counts.items(), key=lambda kv: (kv[0] not in proven, kv[0] is None))
+    ]
+    entry = append_event(
+        session,
+        signer,
+        "LEAK_INTAKE_DUMP",
+        {
+            "evidence_sha256": hashlib.sha256(data).hexdigest(),
+            "status": report.status,
+            "export_ids": [s for s in report.proven if s is not None],
+            "db_direct": None in proven,
+            "honey_rows": len(report.hits),
+            "identifiers": report.ids.total,
+            "personnel_ratio": round(report.personnel_ratio, 3),
+            "corpus_ratio": round(report.corpus_ratio, 3),
+            "case_ref": case_ref,
+        },
+        user.username,
+    )
+    session.commit()
+    return DumpResult(
+        status=report.status,
+        identifiers=IdentifierCounts(
+            nik=len(report.ids.niks), no_hp=len(report.ids.phones), nrp=len(report.ids.nrps)
+        ),
+        personnel_ratio=report.personnel_ratio,
+        corpus_ratio=report.corpus_ratio,
+        corpus_label=report.corpus_label,
+        invalid_ratio=report.invalid_ratio,
+        sources=sources,
+        ledger=LedgerRef(seq=entry.seq, entry_hash=entry.entry_hash),
+        note=DUMP_NOTES[report.status],
+    )

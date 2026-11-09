@@ -1067,6 +1067,66 @@
         }
       }
     },
+    "/api/v1/intake/dump": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Dump",
+        "description": "Periksa klaim kebocoran basis data (Lapis 4): cari honey-record (bukti pasti dan sumber\nekspornya), lalu bandingkan identitas dengan data personel dan korpus data publik lama untuk\nmembedakan kebocoran asli dari daur ulang atau rekaan.",
+        "operationId": "intake_dump_api_v1_intake_dump_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_dump_api_v1_intake_dump_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DumpResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ledger": {
       "get": {
         "tags": [
@@ -1203,6 +1263,333 @@
         }
       }
     },
+    "/api/v1/personnel/summary": {
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Personnel Summary",
+        "operationId": "personnel_summary_api_v1_personnel_summary_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonnelSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/personnel/seed-demo": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Seed Demo",
+        "description": "Isi data personel demo (rekaan) beserta honey-record tertanam. Sekali saja; ditolak bila\ndata personel sudah ada.",
+        "operationId": "seed_demo_api_v1_personnel_seed_demo_post",
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 400,
+              "title": "Count"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeedResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/personnel/exports": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Export Personnel",
+        "description": "Ekspor data personel ke CSV. Setiap ekspor diberi honey-record uniknya sendiri dan dicatat\ndi ledger (akun, satuan, keperluan), sehingga dump yang bocor dapat ditelusuri ke ekspor ini.",
+        "operationId": "export_personnel_api_v1_personnel_exports_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "List Exports",
+        "operationId": "list_exports_api_v1_personnel_exports_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportOut"
+                  },
+                  "title": "Response List Exports Api V1 Personnel Exports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corpora": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Register Corpus",
+        "description": "Daftarkan korpus data publik lama untuk mendeteksi dump daur ulang. Hanya hash NIK dan\nnomor HP yang disimpan; isi berkas dibuang.",
+        "operationId": "register_corpus_api_v1_corpora_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_register_corpus_api_v1_corpora_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "List Corpora",
+        "operationId": "list_corpora_api_v1_corpora_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CorpusOut"
+                  },
+                  "title": "Response List Corpora Api V1 Corpora Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -1269,6 +1656,33 @@
         ],
         "title": "Attribution"
       },
+      "Body_intake_dump_api_v1_intake_dump_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Data dump yang beredar (CSV, SQL, JSON, atau teks)"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_intake_dump_api_v1_intake_dump_post"
+      },
       "Body_intake_photo_api_v1_intake_photo_post": {
         "properties": {
           "photo": {
@@ -1295,6 +1709,34 @@
           "photo"
         ],
         "title": "Body_intake_photo_api_v1_intake_photo_post"
+      },
+      "Body_register_corpus_api_v1_corpora_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Data publik/bocoran lama yang sudah dikenal"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 3,
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "label"
+        ],
+        "title": "Body_register_corpus_api_v1_corpora_post"
       },
       "ChangePasswordRequest": {
         "properties": {
@@ -1433,6 +1875,40 @@
         ],
         "title": "CopyText"
       },
+      "CorpusOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "entries": {
+            "type": "integer",
+            "title": "Entries"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "note",
+          "entries",
+          "created_at"
+        ],
+        "title": "CorpusOut"
+      },
       "DocumentIn": {
         "properties": {
           "nomor": {
@@ -1517,6 +1993,182 @@
         ],
         "title": "DocumentOut"
       },
+      "DumpResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "AUTHENTIC_LEAK",
+              "UNTRACED_MATCH",
+              "RECYCLED_PUBLIC",
+              "FABRICATED",
+              "NOT_FROM_OUR_DB",
+              "INSUFFICIENT_DATA"
+            ],
+            "title": "Status"
+          },
+          "identifiers": {
+            "$ref": "#/components/schemas/IdentifierCounts"
+          },
+          "personnel_ratio": {
+            "type": "number",
+            "title": "Personnel Ratio",
+            "description": "Porsi identitas dump yang ada di data personel"
+          },
+          "corpus_ratio": {
+            "type": "number",
+            "title": "Corpus Ratio",
+            "description": "Porsi identitas yang ada di korpus data publik"
+          },
+          "corpus_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpus Label"
+          },
+          "invalid_ratio": {
+            "type": "number",
+            "title": "Invalid Ratio",
+            "description": "Porsi NIK berformat tidak valid"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/DumpSource"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/LedgerRef"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "identifiers",
+          "personnel_ratio",
+          "corpus_ratio",
+          "invalid_ratio",
+          "ledger",
+          "note"
+        ],
+        "title": "DumpResult"
+      },
+      "DumpSource": {
+        "properties": {
+          "export": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ekspor asal honey-record; null = honey-record tertanam di basis data"
+          },
+          "matched_rows": {
+            "type": "integer",
+            "title": "Matched Rows"
+          },
+          "proven": {
+            "type": "boolean",
+            "title": "Proven",
+            "description": "Bukti cukup (>= 2 baris, atau 1 baris cocok di >= 2 kolom)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "export",
+          "matched_rows",
+          "proven"
+        ],
+        "title": "DumpSource"
+      },
+      "ExportOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "satuan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satuan"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "satuan",
+          "purpose",
+          "row_count",
+          "created_at"
+        ],
+        "title": "ExportOut"
+      },
+      "ExportRequest": {
+        "properties": {
+          "satuan": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satuan",
+            "description": "Kosong = semua satuan"
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 3,
+            "title": "Purpose",
+            "description": "Keperluan ekspor (dicatat)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose"
+        ],
+        "title": "ExportRequest"
+      },
       "ExtractRequest": {
         "properties": {
           "text": {
@@ -1594,6 +2246,29 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IdentifierCounts": {
+        "properties": {
+          "nik": {
+            "type": "integer",
+            "title": "Nik"
+          },
+          "no_hp": {
+            "type": "integer",
+            "title": "No Hp"
+          },
+          "nrp": {
+            "type": "integer",
+            "title": "Nrp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nik",
+          "no_hp",
+          "nrp"
+        ],
+        "title": "IdentifierCounts"
       },
       "IntakeResult": {
         "properties": {
@@ -1822,6 +2497,27 @@
         ],
         "title": "LoginRequest"
       },
+      "PersonnelSummary": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "by_satuan": {
+            "items": {
+              "$ref": "#/components/schemas/SatuanCount"
+            },
+            "type": "array",
+            "title": "By Satuan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "by_satuan"
+        ],
+        "title": "PersonnelSummary"
+      },
       "RecipientIn": {
         "properties": {
           "nrp": {
@@ -1912,6 +2608,43 @@
           "id"
         ],
         "title": "RecipientOut"
+      },
+      "SatuanCount": {
+        "properties": {
+          "satuan": {
+            "type": "string",
+            "title": "Satuan"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "satuan",
+          "count"
+        ],
+        "title": "SatuanCount"
+      },
+      "SeedResult": {
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "honey_records": {
+            "type": "integer",
+            "title": "Honey Records",
+            "description": "Honey-record tertanam di antara baris personel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "honey_records"
+        ],
+        "title": "SeedResult"
       },
       "TokenHit": {
         "properties": {

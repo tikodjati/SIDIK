@@ -9,6 +9,7 @@ import { Button } from "./ui";
 const links: { href: string; label: string; roles: Role[] }[] = [
   { href: "/", label: "Dashboard", roles: ["admin", "distributor", "investigator"] },
   { href: "/distribusi", label: "Distribusi", roles: ["admin", "distributor"] },
+  { href: "/personel", label: "Data Personel", roles: ["admin", "distributor"] },
   { href: "/investigasi", label: "Investigasi", roles: ["admin", "investigator"] },
   { href: "/audit", label: "Audit Trail", roles: ["admin", "investigator"] },
   { href: "/pengguna", label: "Pengguna", roles: ["admin"] },
