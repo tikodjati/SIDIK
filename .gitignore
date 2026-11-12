@@ -52,6 +52,14 @@ data/watermarked_outputs/*
 !data/watermarked_outputs/.gitkeep
 !data/master_templates/
 
+# Video demo (proyek Remotion dan hasil render) tidak masuk git
+/video/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+
 # Node.js & Next.js
 node_modules/
 .next/
