@@ -1,58 +1,115 @@
-# Panduan demo dashboard
+# Panduan Demo Panggung (3 Menit)
 
-Alur 3 halaman yang sudah jalan end-to-end. Buka http://localhost:3000 setelah `docker compose up --build`.
+Panduan ini adalah urutan klik untuk naskah pitch di proposal (Bagian 3). Persiapkan semuanya **H-1**,
+supaya di panggung tinggal unggah dan klik.
 
-## Persiapan
+## A. Persiapan H-1
 
+### 1. Jalankan sistem
 ```bash
-docker compose up --build        # db + api (migrasi otomatis) + web
+docker compose up --build -d
 ```
+Buka http://localhost:3000. Analisis foto pertama sesudah start sedikit lebih lama, jadi lakukan satu
+analisis pemanasan sebelum tampil.
 
-Buat akun demo sekali saja (sandi acak tersimpan di `data/keys/demo_users.txt`, diabaikan git):
+### 2. Akun
+Siapkan tiga peran: `admin`, `distributor`, dan `investigator`.
+- **Database lokal**: jalankan `docker compose exec api python -m scripts.users seed-demo`. Sandinya ada
+  di `data/keys/demo_users.txt`.
+- **Database bersama tim (Neon)**: jangan memakai `seed-demo`. Buat akun lewat halaman **Pengguna**.
 
-```bash
-docker compose exec api python -m scripts.users seed-demo
-```
+Untuk demo persetujuan ganda, pengaju dan penyetuju harus akun yang berbeda, misalnya distributor
+mengajukan lalu admin menyetujui.
 
-Akun: `admin`, `distributor`, `investigator`. Detail peran ada di `docs/AUTENTIKASI_RBAC.md`.
+### 3. Salinan RAHASIA untuk tokoh demo
+1. Masuk sebagai **distributor**, lalu buka **Distribusi**.
+2. Daftarkan 3 penerima. Contoh: Kolonel Inf **Hendro**, NRP `1102003912`, Asintel, Kodam Jaya, ditambah
+   dua penerima lain (untuk demo kolusi).
+3. Daftarkan naskah `ST/412/OPS-SIB/X/2026` dengan klasifikasi **RAHASIA**.
+4. Terbitkan salinan untuk ketiga penerima. Statusnya **MENUNGGU PERSETUJUAN**.
+5. Masuk sebagai **admin**, lalu klik **Setujui** di tabel "Salinan dan pengajuan". Statusnya menjadi **TERBIT**.
+6. Unduh **PDF** salinan Hendro dan **cetak A4**. Unduh juga PDF satu penerima lain (untuk demo kolusi).
 
-## Alur demo
+### 4. Uji foto sekali sebelum tampil
+Foto kertas cetak itu, lalu unggah di **Investigasi → Foto**. Pastikan hasilnya **TARGET TERIDENTIFIKASI**.
+Simpan foto yang berhasil sebagai cadangan kalau pemotretan live gagal.
 
-1. **Distribusi** (`/distribusi`, masuk sebagai `distributor`)
-   1. Daftarkan penerima (NRP, nama, pangkat, jabatan, satuan).
-   2. Daftarkan naskah (nomor, judul, klasifikasi).
-   3. Pilih naskah + penerima, klik **Terbitkan**. Muncul ID salinan, nomor entri ledger, dan teks naskah bertanda (salin atau unduh .txt). Terbitkan untuk beberapa penerima: teksnya berbeda-beda.
-   4. Klik **Unduh PDF (cetak)** (atau tombol **PDF** di tabel) lalu cetak A4. Tiap unduhan tercatat di ledger (`COPY_EXPORTED`).
-2. **Investigasi** (`/investigasi`, masuk sebagai `investigator`)
-   - **Tab Foto / scan:** potret kertas cetak (boleh miring, terputar, diperkecil saat cetak; seluruh halaman sebaiknya terlihat), unggah, klik **Analisis bukti**. Hasil muncul dalam ±10–15 detik beserta gambar halaman yang sudah diluruskan; foto yang ditolak butuh ±20 detik. Di HP, tombol unggah langsung membuka kamera.
-   - **Tab Teks / ketik ulang:**
-   1. Tempel potongan teks dari langkah 1. Alternatif untuk demo cepat: masuk sebagai `admin`, lalu pakai kartu *Simulasi kebocoran* (pilih salinan, atur bagian teks, huruf kapital / salah ketik, klik **Buat teks bocor simulasi**). Kartu itu hanya muncul untuk admin.
-   2. Klik **Analisis bukti**. Hasil: nama, pangkat, NRP, jabatan, satuan penerima, naskah, waktu terbit, plus ledger yang mencatat analisis.
-   3. Coba slider rendah (±30%) atau teks bebas: hasilnya **BUKTI TIDAK CUKUP** (sistem menolak menebak), dan penolakan itu juga tercatat.
-3. **Audit Trail** (`/audit`, `investigator` atau `admin`)
-   - Tunjukkan bahwa pelaku tercatat sesuai akun yang login, termasuk percobaan sandi salah.
-   - **RANTAI VALID** bila tak ada catatan yang diubah. Klik entri untuk melihat hash, tanda tangan Ed25519, dan isi JSON.
-   - Salin **jangkar** (hash ujung rantai) ke berita acara. Pemotongan entri terakhir hanya terdeteksi dengan membandingkan jangkar.
+### 5. Teks bocoran yang disiapkan
+Ambil angka dari PDF salinan Hendro: **frekuensi** di butir 3.c (`1xx.xxx MHz`) dan **REG-AL** di butir 5.a.
 
-## Demo manipulasi (opsional, untuk juri teknis)
+| Berkas | Isi |
+| :--- | :--- |
+| `demo_ketik_ulang.txt` | Masuk sebagai admin, lalu buka Investigasi → Teks → *Simulasi kebocoran*: pilih salinan Hendro, bagian teks **70%**, centang huruf kapital dan salah ketik, klik *Buat teks bocor simulasi*, lalu salin hasilnya |
+| `demo_parafrase.txt` | `Info A1: semua satuan diminta terus memantau jaringan militer di frekuensi <FREKUENSI> MHz, dan perangkat REG-AL-<NOMOR> wajib dicek sebelum pertemuan. Jangan disebar.` |
+| `demo_kolusi.txt` (cadangan) | Satu kalimat yang memuat 2 angka token Hendro dan 2 angka token penerima lain |
 
-Pemilik database dapat melepas trigger append-only, mengubah satu catatan, lalu memasangnya kembali. Rantai tetap menangkapnya:
+### 6. Data personel dan sampel dump
+1. Masuk sebagai **admin**, buka **Data Personel**, lalu klik **Isi data demo** (sekali per basis data).
+2. Buat sampel dump hoaks:
+   ```bash
+   docker compose exec api python -m scripts.personnel hoax-samples
+   ```
+   Perintah ini menghasilkan `data/test_leaks/dump_hoaks_daur_ulang.csv` dan `dump_hoaks_rekaan.csv`.
+3. Di **Data Personel**, ekspor CSV satuan *Yonif 201/Jaya Yudha* dengan keperluan "Rekap kesiapan KTT".
+   Simpan berkasnya sebagai `dump_bocor_forum.csv`; berkas inilah "kebocoran asli" untuk demo.
 
+### 7. Siapkan tab browser
+Siapkan dua tab: **Investigasi** (masuk sebagai admin, supaya kartu simulasi tersedia) dan **Audit Trail**.
+
+## B. Urutan Klik di Panggung
+
+| Waktu | Aksi | Hasil yang harus tampil |
+| :--- | :--- | :--- |
+| 00:00–00:25 | Slide pembuka (tanpa dashboard) | — |
+| 00:25–01:05 | **Investigasi → Foto**: potret kertas cetak secara miring, unggah, klik *Analisis bukti* | **TARGET TERIDENTIFIKASI**: Hendro, NRP, satuan. Baris Lapis 1/2/3 ditandai TERBACA, beserta foto yang sudah diluruskan |
+| 01:05–01:25 | **Tab Teks**: tempel `demo_ketik_ulang.txt`, klik *Analisis* | TERIDENTIFIKASI; Lapis 2 TERBACA; kemiripan dengan naskah resmi tinggi |
+| 01:25–01:45 | Ganti dengan `demo_parafrase.txt`, klik *Analisis* | TERIDENTIFIKASI; Lapis 2 KURANG, **Lapis 3 TERBACA**; 2 token TERKONFIRMASI |
+| 01:45–02:05 | **Tab Data dump**: unggah `dump_hoaks_daur_ulang.csv` | **HOAKS: DAUR ULANG**, dengan nama korpus data publik |
+| 02:05–02:30 | Unggah `dump_bocor_forum.csv` | **KEBOCORAN ASLI**: Ekspor #N oleh akun pengekspor, waktu, dan keperluan |
+| 02:30–03:00 | **Audit Trail** → verifikasi rantai | **RANTAI VALID**; semua langkah tadi tercatat |
+
+**Selagi foto dianalisis (10–30 detik)**, isi waktunya dengan narasi: "SIDIK sedang meluruskan halaman,
+membaca pilihan kata, angka fiktif, dan pergeseran spasi setengah poin di setiap kata, tanpa OCR…"
+
+## C. Demo Cadangan untuk Tanya-Jawab
+
+| Pertanyaan juri | Demo singkat |
+| :--- | :--- |
+| "Bagaimana kalau dua orang berkolusi?" | Tempel `demo_kolusi.txt`. Hasilnya **INDIKASI KOLUSI**, menampilkan kedua salinan, dan penerima ketiga tidak muncul |
+| "Bisa salah tuduh?" | Tempel satu kalimat pendek atau teks bebas. Hasilnya **BUKTI TIDAK CUKUP** dan penolakannya tercatat. Unggah `dump_hoaks_rekaan.csv`: **HOAKS: DATA REKAAN** |
+| "Admin bisa menyalahgunakan?" | Admin yang mengajukan salinan RAHASIA lalu mencoba menyetujuinya sendiri akan ditolak ("four-eyes"). Ledger juga tidak bisa diubah (lihat demo manipulasi di bawah) |
+| "Kalau fotonya cuma separuh?" | Unggah foto setengah halaman salinan Hendro: tetap teridentifikasi |
+| "Format naskah dinas?" | Tunjukkan PDF: rata kanan-kiri, tanpa watermark kasat mata |
+| "Data dari ekspor bisa dilacak?" | Tunjukkan **Data Personel → Riwayat ekspor**, yang cocok dengan hasil dump tadi |
+
+### Demo manipulasi ledger (untuk juri teknis, database lokal saja)
 ```bash
 docker compose exec db psql -U sidik -d sidik -c "ALTER TABLE ledger_entries DISABLE TRIGGER USER; UPDATE ledger_entries SET body = replace(body, 'COPY_ISSUED', 'X') WHERE seq = 1; ALTER TABLE ledger_entries ENABLE TRIGGER USER;"
 ```
+Muat ulang **Audit Trail**: hasilnya **RANTAI RUSAK**, "Entri #1: isi entri telah diubah". Kembalikan
+dengan `replace(body, 'X', 'COPY_ISSUED')`. **Jangan jalankan di database bersama tim.**
 
-Muat ulang `/audit`: **RANTAI RUSAK**, "Entri #1: isi entri telah diubah". Kembalikan dengan `replace(body, 'X', 'COPY_ISSUED')` (jalankan hanya pada data demo).
+### Demo pembatasan peran
+Masuk sebagai `distributor` lalu buka `/audit`: halaman menampilkan **Akses ditolak** dan API menjawab `403`.
 
-## Demo pembatasan peran (opsional)
+## D. Rencana Kalau Ada yang Gagal
 
-Masuk sebagai `distributor`, lalu buka `/audit`: halaman menampilkan **Akses ditolak** dan API menjawab `403`. Menu juga hanya menampilkan yang boleh diakses.
+| Masalah | Tindakan |
+| :--- | :--- |
+| Foto live tidak terbaca | Unggah foto cadangan yang sudah berhasil (A.4). Jelaskan bahwa sistem memilih menolak daripada menebak |
+| Tidak ada internet (database Neon tak terjangkau) | Pakai database lokal: kosongkan `SIDIK_SHARED_DATABASE_URL` di `.env`, lalu `docker compose up -d`, dan ulangi persiapan A.2–A.6 di laptop demo. **Lakukan versi lokal ini H-1 sebagai cadangan.** |
+| Laptop bermasalah | Laptop kedua yang sudah disiapkan, atau rekaman video demo |
+| Analisis lambat | Normal 10–30 detik. Teruskan narasi; jangan klik ulang |
 
-## Batasan yang perlu dijelaskan jujur
+## E. Batasan yang Dijelaskan Jujur
 
-- Admin tetap sangat berkuasa walau tercatat di ledger; otorisasi ganda dan HSM masih roadmap.
-- Atribusi menunjukkan **salinan yang diterbitkan**, bukan putusan bersalah.
-- PDF salinan membawa Lapis 1 dan Lapis 2; foto membaca keduanya dan menggabungkan buktinya. Bila kedua lapis menunjuk salinan berbeda, hasilnya ditolak sebagai **BUKTI BERTENTANGAN**. Pembacaan pilihan kata dari foto baru diuji dengan foto simulasi.
-- Foto dari PDF naskah baru diuji dengan foto simulasi; foto asli belum.
-- Kamus Lapis 2 sementara (belum divalidasi Perkasad); naskah demo ≈ 60% teks dibutuhkan untuk identifikasi.
-- Tidak ada halaman "Verifikasi Klaim" (AI anti-psywar) karena modulnya belum dibangun.
+- Atribusi menunjuk **salinan yang bocor**, bukan putusan bersalah.
+- **Kutipan sangat pendek** tanpa angka token tidak bisa diatribusi (batas matematis: satu kalimat
+  hanya sekitar 4 bit). Sistem menolak menebak.
+- **Foto 2–3 baris** atau foto yang sangat buram ditolak. Setengah halaman masih terbaca.
+- **Kolusi** paling andal untuk 2–3 orang. Bila semua angka dibuang, honey-token hilang. Tardos menjadi roadmap.
+- **Kamus varian kata** di naskah demo belum disahkan ahli Jukminu; format resmi lengkap (kop, tembusan,
+  lampiran) butuh template dari pihak TNI.
+- **Lapis 4** memakai data personel demo pengganti SISFO. Alarm otomatis (nomor perangkap dihubungi)
+  dan radar OSINT masih roadmap.
+- **Kunci ledger** berupa berkas terproteksi; HSM masih roadmap.
