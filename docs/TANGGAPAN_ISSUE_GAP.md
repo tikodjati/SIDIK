@@ -18,7 +18,7 @@ disebutkan lain.
 | 10 | Foto membebani CPU, unggahan bersamaan antre | ✅ | 2 worker API. Route foto memang sudah tidak memblokir server |
 | 11 | Kunci Ed25519 berupa file di disk | ⚠️ (roadmap HSM) | Sudah `chmod 600` dan terpisah dari DB; HSM butuh perangkat keras |
 | 12 | Tidak ada generator synset otomatis | ⚠️ | Sengaja tidak dibuat: varian kata harus disahkan ahli Jukminu |
-| 13 | Admin berkuasa mutlak, belum *four-eyes* | ⚠️ (bisa dibangun) | Ledger tetap tidak bisa diubah admin. Alur persetujuan ganda bisa ditambahkan bila tim setuju |
+| 13 | Admin berkuasa mutlak, belum *four-eyes* | ✅ | Salinan RAHASIA/SANGAT RAHASIA wajib disetujui admin lain; ledger tetap tak bisa diubah admin |
 
 ## Rincian
 
@@ -140,8 +140,19 @@ otomatis**: keunikan varian, kemiripan antar-kata, kapasitas bit, dan kemuatan s
 diperiksa saat template dimuat. Ahli Jukminu cukup menulis template, dan mesin menolak template yang
 tidak valid.
 
-### 13. Four-eyes principle (⚠️)
-Admin tidak bisa memalsukan jejak. Ledger bersifat *append-only* (dijaga trigger basis data),
-ditandatangani, dan berantai hash, sehingga perubahan apa pun terdeteksi di halaman Audit. Yang
-belum ada adalah **alur persetujuan ganda**, misalnya penerbitan salinan RAHASIA yang harus disetujui
-akun kedua. Fitur ini **bisa dibangun** (sekitar 1–2 jam) kalau tim menganggapnya penting untuk demo.
+### 13. Four-eyes principle (✅)
+- Salinan naskah **RAHASIA** dan **SANGAT RAHASIA** awalnya berstatus **MENUNGGU PERSETUJUAN**.
+  PDF dan teksnya tidak bisa diunduh sampai **admin lain** menyetujuinya.
+- Pengaju tidak bisa menyetujui pengajuannya sendiri, meskipun ia admin.
+- Penolakan wajib disertai alasan. Pengajuan, persetujuan, dan penolakan semuanya tercatat di ledger
+  beserta nama pejabatnya.
+- Salinan yang belum atau tidak disetujui tidak pernah diatribusikan ke penerimanya, karena ia tak
+  pernah memegang salinan itu.
+- Naskah BIASA, TERBATAS, dan KONFIDENSIAL tetap langsung terbit.
+- Ledger tetap *append-only*, ditandatangani, dan berantai hash, sehingga admin pun tidak bisa
+  memalsukan jejak.
+
+Alur demo: distributor mengajukan, lalu admin menekan **Setujui** di tabel Distribusi, lalu PDF
+bisa diunduh.
+
+Yang belum: persetujuan ganda untuk tindakan admin lain (menonaktifkan akun, mengisi data demo).

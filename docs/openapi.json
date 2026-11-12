@@ -884,7 +884,7 @@
           "registry"
         ],
         "summary": "Issue Copy",
-        "description": "Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.",
+        "description": "Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.\n\nNaskah RAHASIA/SANGAT RAHASIA: salinan berstatus PENDING (belum bisa diunduh) sampai disetujui\nadmin lain (four-eyes principle). Pengajuan ulang setelah ditolak diperbolehkan.",
         "operationId": "issue_copy_api_v1_documents__document_id__copies_post",
         "parameters": [
           {
@@ -930,6 +930,134 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CopyIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/approve": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Approve Copy",
+        "description": "Setujui salinan naskah RAHASIA/SANGAT RAHASIA. Wajib admin selain pengaju (four-eyes).",
+        "operationId": "approve_copy_api_v1_copies__copy_id__approve_post",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/reject": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Reject Copy",
+        "description": "Tolak pengajuan salinan; salinan tak pernah bisa diunduh. Alasan dicatat di ledger.",
+        "operationId": "reject_copy_api_v1_copies__copy_id__reject_post",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyOut"
                 }
               }
             }
@@ -1779,10 +1907,27 @@
             "format": "date-time",
             "title": "Issued At"
           },
-          "text": {
+          "status": {
             "type": "string",
+            "enum": [
+              "PENDING",
+              "ISSUED",
+              "REJECTED"
+            ],
+            "title": "Status",
+            "description": "PENDING = naskah RAHASIA/SANGAT RAHASIA menunggu persetujuan admin lain"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Text",
-            "description": "Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini"
+            "description": "Naskah dengan penanda Lapis 2 dan 3; kosong selama menunggu persetujuan"
           },
           "ledger_seq": {
             "type": "integer",
@@ -1795,7 +1940,7 @@
           "document_id",
           "recipient_id",
           "issued_at",
-          "text",
+          "status",
           "ledger_seq"
         ],
         "title": "CopyIssued"
@@ -1826,10 +1971,45 @@
             "type": "string",
             "title": "Recipient Nrp"
           },
+          "klasifikasi": {
+            "type": "string",
+            "title": "Klasifikasi"
+          },
           "issued_at": {
             "type": "string",
             "format": "date-time",
             "title": "Issued At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ISSUED",
+              "REJECTED"
+            ],
+            "title": "Status"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
           }
         },
         "type": "object",
@@ -1840,7 +2020,11 @@
           "recipient_id",
           "recipient_nama",
           "recipient_nrp",
-          "issued_at"
+          "klasifikasi",
+          "issued_at",
+          "status",
+          "requested_by",
+          "approved_by"
         ],
         "title": "CopyOut"
       },
@@ -2620,6 +2804,21 @@
           "id"
         ],
         "title": "RecipientOut"
+      },
+      "RejectRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "RejectRequest"
       },
       "SatuanCount": {
         "properties": {

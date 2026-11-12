@@ -12,7 +12,7 @@ RECIPIENT = {
 DOCUMENT = {
     "nomor": "ST/412/OPS-SIB/X/2026",
     "judul": "Kesiapsiagaan Siber",
-    "klasifikasi": "RAHASIA",
+    "klasifikasi": "KONFIDENSIAL",  # langsung terbit; RAHASIA diuji di test_four_eyes
 }
 
 

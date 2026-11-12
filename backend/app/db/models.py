@@ -56,6 +56,12 @@ class Copy(Base):
     document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"))
     recipient_id: Mapped[int] = mapped_column(ForeignKey("recipients.id"))
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # Four-eyes: salinan naskah RAHASIA/SANGAT RAHASIA mulai PENDING dan baru ISSUED setelah
+    # disetujui admin lain (bukan pengaju). REJECTED = ditolak, tak pernah diedarkan.
+    status: Mapped[str] = mapped_column(String(16), default="ISSUED", server_default="ISSUED")
+    requested_by: Mapped[str | None] = mapped_column(String(32), default=None)
+    approved_by: Mapped[str | None] = mapped_column(String(32), default=None)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
     document: Mapped[Document] = relationship()
     recipient: Mapped[Recipient] = relationship()

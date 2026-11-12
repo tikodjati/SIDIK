@@ -113,7 +113,7 @@ function InvestigasiPanel() {
   useEffect(() => {
     if (!canSimulate) return;
     listCopies()
-      .then(setCopies)
+      .then((rows) => setCopies(rows.filter((c) => c.status === "ISSUED"))) // hanya yang beredar
       .catch(() => setCopies([]));
   }, [canSimulate]);
 

@@ -97,6 +97,10 @@ export const createDocument = (body: DocumentInput) => post<DocumentRow>("/api/v
 export const listCopies = () => request<CopyRow[]>("/api/v1/copies");
 export const issueCopy = (documentId: number, recipientId: number) =>
   post<CopyIssued>(`/api/v1/documents/${documentId}/copies`, { recipient_id: recipientId });
+export const approveCopy = (copyId: number) =>
+  post<CopyRow>(`/api/v1/copies/${copyId}/approve`, {});
+export const rejectCopy = (copyId: number, reason: string) =>
+  post<CopyRow>(`/api/v1/copies/${copyId}/reject`, { reason });
 export const getCopyText = (copyId: number) =>
   request<{ copy_id: number; text: string }>(`/api/v1/copies/${copyId}/text`);
 export const intakeText = (text: string, caseRef?: string) =>

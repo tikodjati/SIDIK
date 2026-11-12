@@ -19,7 +19,8 @@ def _setup_copy(client, nrp: str = "1102003912") -> dict:
     ).json()
     d = client.post(
         "/api/v1/documents",
-        json={"nomor": f"ST/FOTO/{nrp}/XI/2026", "judul": "Uji Foto", "klasifikasi": "RAHASIA"},
+        json={"nomor": f"ST/FOTO/{nrp}/XI/2026", "judul": "Uji Foto",
+              "klasifikasi": "KONFIDENSIAL"},
     ).json()
     res = client.post(f"/api/v1/documents/{d['id']}/copies", json={"recipient_id": r["id"]})
     return res.json()

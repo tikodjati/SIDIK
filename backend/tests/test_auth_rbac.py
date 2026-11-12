@@ -45,6 +45,8 @@ ALLOWED = {
     ("POST", "/api/v1/corpora"): {A},
     ("GET", "/api/v1/corpora"): {A, INV},
     ("POST", "/api/v1/intake/dump"): {A, INV},
+    ("POST", "/api/v1/copies/{copy_id}/approve"): {A},
+    ("POST", "/api/v1/copies/{copy_id}/reject"): {A},
 }
 
 

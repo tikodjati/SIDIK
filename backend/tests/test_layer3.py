@@ -18,7 +18,8 @@ def _recipient_and_doc(client, nrp: str, nomor: str) -> tuple[int, int]:
               "jabatan": "Kasi Intel", "satuan": "Kodam Jaya"},
     ).json()
     d = client.post(
-        "/api/v1/documents", json={"nomor": nomor, "judul": "Uji Lapis 3"}
+        "/api/v1/documents",
+        json={"nomor": nomor, "judul": "Uji Lapis 3", "klasifikasi": "KONFIDENSIAL"},
     ).json()
     return r["id"], d["id"]
 

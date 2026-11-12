@@ -268,8 +268,51 @@ export interface paths {
         /**
          * Issue Copy
          * @description Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.
+         *
+         *     Naskah RAHASIA/SANGAT RAHASIA: salinan berstatus PENDING (belum bisa diunduh) sampai disetujui
+         *     admin lain (four-eyes principle). Pengajuan ulang setelah ditolak diperbolehkan.
          */
         post: operations["issue_copy_api_v1_documents__document_id__copies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/copies/{copy_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Copy
+         * @description Setujui salinan naskah RAHASIA/SANGAT RAHASIA. Wajib admin selain pengaju (four-eyes).
+         */
+        post: operations["approve_copy_api_v1_copies__copy_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/copies/{copy_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Copy
+         * @description Tolak pengajuan salinan; salinan tak pernah bisa diunduh. Alasan dicatat di ledger.
+         */
+        post: operations["reject_copy_api_v1_copies__copy_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -558,10 +601,16 @@ export interface components {
              */
             issued_at: string;
             /**
-             * Text
-             * @description Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini
+             * Status
+             * @description PENDING = naskah RAHASIA/SANGAT RAHASIA menunggu persetujuan admin lain
+             * @enum {string}
              */
-            text: string;
+            status: "PENDING" | "ISSUED" | "REJECTED";
+            /**
+             * Text
+             * @description Naskah dengan penanda Lapis 2 dan 3; kosong selama menunggu persetujuan
+             */
+            text?: string | null;
             /** Ledger Seq */
             ledger_seq: number;
         };
@@ -579,11 +628,22 @@ export interface components {
             recipient_nama: string;
             /** Recipient Nrp */
             recipient_nrp: string;
+            /** Klasifikasi */
+            klasifikasi: string;
             /**
              * Issued At
              * Format: date-time
              */
             issued_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "ISSUED" | "REJECTED";
+            /** Requested By */
+            requested_by: string | null;
+            /** Approved By */
+            approved_by: string | null;
         };
         /** CopyRequest */
         CopyRequest: {
@@ -895,6 +955,11 @@ export interface components {
             satuan: string;
             /** Id */
             id: number;
+        };
+        /** RejectRequest */
+        RejectRequest: {
+            /** Reason */
+            reason: string;
         };
         /** SatuanCount */
         SatuanCount: {
@@ -1580,6 +1645,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CopyIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_copy_api_v1_copies__copy_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                copy_id: number;
+            };
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_copy_api_v1_copies__copy_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                copy_id: number;
+            };
+            cookie?: {
+                sidik_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyOut"];
                 };
             };
             /** @description Validation Error */

@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RequireRole } from "@/components/AuthProvider";
-import { Badge, Button, Card, ErrorNote, Field, inputClass } from "@/components/ui";
+import { RequireRole, useAuth } from "@/components/AuthProvider";
+import { Badge, Button, Card, ErrorNote, Field, inputClass, type Tone } from "@/components/ui";
 import {
   type CopyIssued,
   type CopyRow,
   type DocumentRow,
   type Recipient,
+  approveCopy,
   createDocument,
   createRecipient,
   getCopyPdf,
@@ -15,6 +16,7 @@ import {
   listCopies,
   listDocuments,
   listRecipients,
+  rejectCopy,
   saveBlob,
 } from "@/lib/api";
 import { formatTime, hexId } from "@/lib/format";
@@ -22,10 +24,18 @@ import { formatTime, hexId } from "@/lib/format";
 const fetchAll = () => Promise.all([listRecipients(), listDocuments(), listCopies()]);
 
 const KLASIFIKASI = ["BIASA", "TERBATAS", "KONFIDENSIAL", "RAHASIA", "SANGAT RAHASIA"] as const;
+// Four-eyes principle: salinan naskah ini baru terbit setelah disetujui admin lain.
+const NEEDS_APPROVAL = new Set<string>(["RAHASIA", "SANGAT RAHASIA"]);
+const STATUS_BADGE: Record<CopyRow["status"], { label: string; tone: Tone }> = {
+  ISSUED: { label: "TERBIT", tone: "ok" },
+  PENDING: { label: "MENUNGGU PERSETUJUAN", tone: "warn" },
+  REJECTED: { label: "DITOLAK", tone: "danger" },
+};
 const emptyRecipient = { nrp: "", nama: "", pangkat: "", jabatan: "", satuan: "" };
 const emptyDocument = { nomor: "", judul: "", klasifikasi: "RAHASIA" as (typeof KLASIFIKASI)[number] };
 
 function DistribusiPanel() {
+  const { user } = useAuth();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [copies, setCopies] = useState<CopyRow[]>([]);
@@ -86,8 +96,14 @@ function DistribusiPanel() {
     });
   };
 
+  const approve = (copyId: number) => void run(async () => void (await approveCopy(copyId)));
+  const reject = (copyId: number) => {
+    const reason = window.prompt("Alasan penolakan (dicatat di ledger):")?.trim();
+    if (reason && reason.length >= 3) void run(async () => void (await rejectCopy(copyId, reason)));
+  };
+
   const download = () => {
-    if (!issued) return;
+    if (!issued?.text) return;
     const blob = new Blob([issued.text], { type: "text/plain;charset=utf-8" });
     saveBlob(blob, `salinan_${hexId(issued.copy_id)}.txt`);
   };
@@ -97,7 +113,7 @@ function DistribusiPanel() {
     void run(async () => saveBlob(await getCopyPdf(copyId), `salinan_${hexId(copyId)}.pdf`));
 
   const copyText = () => {
-    if (issued) void navigator.clipboard?.writeText(issued.text).catch(() => undefined);
+    if (issued?.text) void navigator.clipboard?.writeText(issued.text).catch(() => undefined);
   };
 
   return (
@@ -194,7 +210,24 @@ function DistribusiPanel() {
           <Button disabled={busy}>Terbitkan</Button>
         </form>
 
-        {issued && (
+        {NEEDS_APPROVAL.has(documents.find((d) => String(d.id) === documentId)?.klasifikasi ?? "") && (
+          <p className="mt-3 text-xs text-warn">
+            Naskah RAHASIA/SANGAT RAHASIA: salinan baru bisa diunduh setelah disetujui admin lain
+            (four-eyes principle).
+          </p>
+        )}
+
+        {issued?.status === "PENDING" && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
+            <Badge tone="warn">MENUNGGU PERSETUJUAN</Badge>
+            <span className="font-mono">ID {hexId(issued.copy_id)}</span>
+            <span className="text-foreground/60">
+              diajukan (ledger #{issued.ledger_seq}); admin lain perlu menyetujui di tabel di bawah.
+            </span>
+          </div>
+        )}
+
+        {issued?.text && (
           <div className="mt-4 space-y-3 border-t border-border pt-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <Badge tone="ok">SALINAN DITERBITKAN</Badge>
@@ -204,7 +237,7 @@ function DistribusiPanel() {
             <textarea
               readOnly
               aria-label="Teks naskah bertanda"
-              value={issued.text}
+              value={issued.text ?? ""}
               rows={12}
               className="w-full rounded border border-border bg-background p-3 font-mono text-xs"
             />
@@ -223,7 +256,7 @@ function DistribusiPanel() {
         )}
       </Card>
 
-      <Card title="Salinan yang sudah diterbitkan">
+      <Card title="Salinan dan pengajuan">
         {copies.length === 0 ? (
           <p className="text-sm text-foreground/60">Belum ada salinan.</p>
         ) : (
@@ -235,7 +268,8 @@ function DistribusiPanel() {
                   <th>Penerima</th>
                   <th>NRP</th>
                   <th>Naskah</th>
-                  <th>Diterbitkan</th>
+                  <th>Waktu</th>
+                  <th>Status</th>
                   <th />
                 </tr>
               </thead>
@@ -247,10 +281,32 @@ function DistribusiPanel() {
                     <td className="font-mono">{c.recipient_nrp}</td>
                     <td>{c.document_nomor}</td>
                     <td>{formatTime(c.issued_at)}</td>
-                    <td className="py-1 text-right">
-                      <Button tone="muted" onClick={() => downloadPdf(c.copy_id)} disabled={busy}>
-                        PDF
-                      </Button>
+                    <td>
+                      <Badge tone={STATUS_BADGE[c.status].tone}>{STATUS_BADGE[c.status].label}</Badge>
+                      <p className="mt-0.5 text-xs text-foreground/60">
+                        {c.requested_by ? `oleh ${c.requested_by}` : ""}
+                        {c.approved_by ? ` · disetujui ${c.approved_by}` : ""}
+                      </p>
+                    </td>
+                    <td className="space-x-2 py-1 text-right whitespace-nowrap">
+                      {c.status === "ISSUED" && (
+                        <Button tone="muted" onClick={() => downloadPdf(c.copy_id)} disabled={busy}>
+                          PDF
+                        </Button>
+                      )}
+                      {c.status === "PENDING" &&
+                        (user?.role === "admin" && user.username !== c.requested_by ? (
+                          <>
+                            <Button onClick={() => approve(c.copy_id)} disabled={busy}>
+                              Setujui
+                            </Button>
+                            <Button tone="muted" onClick={() => reject(c.copy_id)} disabled={busy}>
+                              Tolak
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-foreground/60">menunggu admin lain</span>
+                        ))}
                     </td>
                   </tr>
                 ))}

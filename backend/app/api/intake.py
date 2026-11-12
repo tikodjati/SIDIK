@@ -84,11 +84,17 @@ def _attribute(
 
     Pagar anti salah-tuduh: dekoder menolak bukti rusak berat, `copy_id` hasil dekode wajib
     terdaftar, dan honey-token baru menunjuk salinan bila >= 2 tokennya cocok (atau dikonfirmasi
-    lapis lain). Setiap pemeriksaan (termasuk yang ditolak) dicatat; yang disimpan hanya hash
-    bukti, bukan isinya."""
-    hits = hits or []
+    lapis lain). Salinan yang belum pernah diedarkan (menunggu persetujuan / ditolak) tidak
+    diatribusikan: penerimanya tak pernah memegangnya. Setiap pemeriksaan (termasuk yang
+    ditolak) dicatat; yang disimpan hanya hash bukti, bukan isinya."""
+
+    def released(c: Copy | None) -> bool:
+        return c is not None and c.status == "ISSUED"
+
+    hits = [h for h in hits or [] if released(session.get(Copy, h.copy_id))]
     copy_id = decoded[0] if decoded else None
     decoded_copy = session.get(Copy, copy_id) if copy_id is not None else None
+    decoded_copy = decoded_copy if released(decoded_copy) else None
     verdict = l3.judge(hits, decoded_copy.copy_id if decoded_copy else None)
     copies = [session.get(Copy, c) for c in verdict.identified]
     if conflict:

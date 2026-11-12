@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Klasifikasi = Literal["BIASA", "TERBATAS", "KONFIDENSIAL", "RAHASIA", "SANGAT RAHASIA"]
+CopyStatus = Literal["PENDING", "ISSUED", "REJECTED"]
 
 
 class RecipientIn(BaseModel):
@@ -41,8 +42,18 @@ class CopyIssued(BaseModel):
     document_id: int
     recipient_id: int
     issued_at: datetime
-    text: str = Field(description="Naskah dengan penanda Lapis 2 dan 3 untuk salinan ini")
+    status: CopyStatus = Field(
+        description="PENDING = naskah RAHASIA/SANGAT RAHASIA menunggu persetujuan admin lain"
+    )
+    text: str | None = Field(
+        default=None,
+        description="Naskah dengan penanda Lapis 2 dan 3; kosong selama menunggu persetujuan",
+    )
     ledger_seq: int
+
+
+class RejectRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=256)
 
 
 class CopyOut(BaseModel):
@@ -52,7 +63,11 @@ class CopyOut(BaseModel):
     recipient_id: int
     recipient_nama: str
     recipient_nrp: str
+    klasifikasi: str
     issued_at: datetime
+    status: CopyStatus
+    requested_by: str | None
+    approved_by: str | None
 
 
 class CopyText(BaseModel):

@@ -39,6 +39,15 @@ export function summarize(body: LedgerBody | null): string {
   if (body.event === "COPY_EXPORTED") {
     return `PDF salinan ${hexId(Number(d.copy_id))} diunduh (${String(d.document_nomor)})`;
   }
+  if (body.event === "COPY_REQUESTED") {
+    return `pengajuan salinan ${hexId(Number(d.copy_id))} untuk NRP ${String(d.recipient_nrp)} (${String(d.document_nomor)}, ${String(d.klasifikasi)}) menunggu persetujuan`;
+  }
+  if (body.event === "COPY_APPROVED") {
+    return `salinan ${hexId(Number(d.copy_id))} disetujui (diajukan oleh ${String(d.requested_by)})`;
+  }
+  if (body.event === "COPY_REJECTED") {
+    return `pengajuan salinan ${hexId(Number(d.copy_id))} ditolak: ${String(d.reason)}`;
+  }
   if (body.event === "DATA_EXPORTED") {
     return `ekspor data personel #${String(d.export_id)} · ${d.satuan ? String(d.satuan) : "semua satuan"} · ${String(d.rows)} baris · ${String(d.purpose)}`;
   }
