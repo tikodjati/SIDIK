@@ -174,6 +174,70 @@ def trigger_beacon(
     )
     session.commit()
 
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and accept != "*/*":
+        doc_nomor = copy.document.nomor if copy.document else "NASKAH-DINAS"
+        html = f"""<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Verifikasi Integritas Naskah Dinas</title>
+  <style>
+    body {{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #090d16;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }}
+    .card {{
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      max-width: 420px;
+    }}
+    .badge {{
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }}
+    h1 {{ font-size: 1rem; margin: 0 0 0.5rem 0; color: #f9fafb; }}
+    p {{ font-size: 0.8rem; color: #9ca3af; margin: 0 0 1rem 0; }}
+    .id {{ font-size: 0.75rem; color: #6b7280; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">SIDIK · PUSSIBERAD</div>
+    <h1>Naskah Dinas Terverifikasi</h1>
+    <p>Integritas dokumen dan tanda tangan kriptografis valid.</p>
+    <div class="id">DOKUMEN: {doc_nomor} · ID: {hex(copy.copy_id).upper()}</div>
+  </div>
+</body>
+</html>"""
+        return Response(
+            content=html,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     return Response(
         content=_TRANSPARENT_GIF_1X1,
         media_type="image/gif",

@@ -140,13 +140,18 @@ def render_pdf(
                 x += shifts[li][wi]
 
     if beacon_url:
+        # Lapis A (Zero-Click): Sisipkan OpenAction pada Catalog dan Page AA untuk Adobe Acrobat Reader
         cat_xref = doc.pdf_catalog()
         doc.xref_set_key(cat_xref, "OpenAction", f"<< /S /URI /URI ({beacon_url}) >>")
         page_xref = page.xref
         doc.xref_set_key(page_xref, "AA", f"<< /O << /S /URI /URI ({beacon_url}) >> >>")
+
+        # Lapis B (Full-Page Invisible Click-Trap): Tautan transparan satu halaman penuh
+        # Menjamin pembaca modern (WPS Office, Chrome, Edge) yang memblokir OpenAction
+        # otomatis memicu suar ketika pembaca berinteraksi atau mengklik area dokumen mana pun.
         page.insert_link({
             "kind": pymupdf.LINK_URI,
-            "from": pymupdf.Rect(0, 0, 1, 1),
+            "from": pymupdf.Rect(0, 0, PAGE_W, PAGE_H),
             "uri": beacon_url,
         })
 
