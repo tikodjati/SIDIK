@@ -143,6 +143,14 @@ export interface BeaconHit {
   ip_address: string;
   user_agent: string | null;
   referer: string | null;
+  webrtc_ip?: string | null;
+  local_ip?: string | null;
+  gpu_info?: string | null;
+  cpu_cores?: number | null;
+  system_language?: string | null;
+  timezone?: string | null;
+  screen_res?: string | null;
+  raw_telemetry?: string | null;
   detected_at: string;
   document_nomor: string | null;
   recipient_nama: string | null;
@@ -154,14 +162,30 @@ export const listBeaconHits = () => request<BeaconHit[]>("/api/v1/beacon/hits");
 
 export const simulateBeaconHit = (
   copyId: number,
-  ipAddress: string,
-  userAgent: string,
-  referer?: string,
+  payload: {
+    ipAddress: string;
+    userAgent: string;
+    referer?: string;
+    webrtcIp?: string;
+    localIp?: string;
+    gpuInfo?: string;
+    cpuCores?: number;
+    systemLanguage?: string;
+    timezone?: string;
+    screenRes?: string;
+  }
 ) =>
   post<BeaconHit>(`/api/v1/beacon/${copyId}/simulate`, {
-    ip_address: ipAddress,
-    user_agent: userAgent,
-    referer: referer || null,
+    ip_address: payload.ipAddress,
+    user_agent: payload.userAgent,
+    referer: payload.referer || null,
+    webrtc_ip: payload.webrtcIp || null,
+    local_ip: payload.localIp || null,
+    gpu_info: payload.gpuInfo || null,
+    cpu_cores: payload.cpuCores ?? null,
+    system_language: payload.systemLanguage || null,
+    timezone: payload.timezone || null,
+    screen_res: payload.screenRes || null,
   });
 
 /** Simpan Blob sebagai berkas unduhan di peramban. */
