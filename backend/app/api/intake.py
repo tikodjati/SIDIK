@@ -89,7 +89,7 @@ def _attribute(
     ditolak) dicatat; yang disimpan hanya hash bukti, bukan isinya."""
 
     def released(c: Copy | None) -> bool:
-        return c is not None and c.status == "ISSUED"
+        return c is not None and (c.status or "ISSUED") == "ISSUED"
 
     hits = [h for h in hits or [] if released(session.get(Copy, h.copy_id))]
     copy_id = decoded[0] if decoded else None

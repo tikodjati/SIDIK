@@ -26,7 +26,7 @@ const fetchAll = () => Promise.all([listRecipients(), listDocuments(), listCopie
 const KLASIFIKASI = ["BIASA", "TERBATAS", "KONFIDENSIAL", "RAHASIA", "SANGAT RAHASIA"] as const;
 // Four-eyes principle: salinan naskah ini baru terbit setelah disetujui admin lain.
 const NEEDS_APPROVAL = new Set<string>(["RAHASIA", "SANGAT RAHASIA"]);
-const STATUS_BADGE: Record<CopyRow["status"], { label: string; tone: Tone }> = {
+const STATUS_BADGE: Record<string, { label: string; tone: Tone }> = {
   ISSUED: { label: "TERBIT", tone: "ok" },
   PENDING: { label: "MENUNGGU PERSETUJUAN", tone: "warn" },
   REJECTED: { label: "DITOLAK", tone: "danger" },
@@ -274,42 +274,48 @@ function DistribusiPanel() {
                 </tr>
               </thead>
               <tbody>
-                {copies.map((c) => (
-                  <tr key={c.copy_id} className="border-t border-border/60">
-                    <td className="py-2 font-mono">{hexId(c.copy_id)}</td>
-                    <td>{c.recipient_nama}</td>
-                    <td className="font-mono">{c.recipient_nrp}</td>
-                    <td>{c.document_nomor}</td>
-                    <td>{formatTime(c.issued_at)}</td>
-                    <td>
-                      <Badge tone={STATUS_BADGE[c.status].tone}>{STATUS_BADGE[c.status].label}</Badge>
-                      <p className="mt-0.5 text-xs text-foreground/60">
-                        {c.requested_by ? `oleh ${c.requested_by}` : ""}
-                        {c.approved_by ? ` · disetujui ${c.approved_by}` : ""}
-                      </p>
-                    </td>
-                    <td className="space-x-2 py-1 text-right whitespace-nowrap">
-                      {c.status === "ISSUED" && (
-                        <Button tone="muted" onClick={() => downloadPdf(c.copy_id)} disabled={busy}>
-                          PDF
-                        </Button>
-                      )}
-                      {c.status === "PENDING" &&
-                        (user?.role === "admin" && user.username !== c.requested_by ? (
-                          <>
-                            <Button onClick={() => approve(c.copy_id)} disabled={busy}>
-                              Setujui
-                            </Button>
-                            <Button tone="muted" onClick={() => reject(c.copy_id)} disabled={busy}>
-                              Tolak
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-foreground/60">menunggu admin lain</span>
-                        ))}
-                    </td>
-                  </tr>
-                ))}
+                {copies.map((c) => {
+                  const statusInfo = (c.status && STATUS_BADGE[c.status]) ?? {
+                    label: c.status || "TERBIT",
+                    tone: "ok" as Tone,
+                  };
+                  return (
+                    <tr key={c.copy_id} className="border-t border-border/60">
+                      <td className="py-2 font-mono">{hexId(c.copy_id)}</td>
+                      <td>{c.recipient_nama}</td>
+                      <td className="font-mono">{c.recipient_nrp}</td>
+                      <td>{c.document_nomor}</td>
+                      <td>{formatTime(c.issued_at)}</td>
+                      <td>
+                        <Badge tone={statusInfo.tone}>{statusInfo.label}</Badge>
+                        <p className="mt-0.5 text-xs text-foreground/60">
+                          {c.requested_by ? `oleh ${c.requested_by}` : ""}
+                          {c.approved_by ? ` · disetujui ${c.approved_by}` : ""}
+                        </p>
+                      </td>
+                      <td className="space-x-2 py-1 text-right whitespace-nowrap">
+                        {(!c.status || c.status === "ISSUED") && (
+                          <Button tone="muted" onClick={() => downloadPdf(c.copy_id)} disabled={busy}>
+                            PDF
+                          </Button>
+                        )}
+                        {c.status === "PENDING" &&
+                          (user?.role === "admin" && user.username !== c.requested_by ? (
+                            <>
+                              <Button onClick={() => approve(c.copy_id)} disabled={busy}>
+                                Setujui
+                              </Button>
+                              <Button tone="muted" onClick={() => reject(c.copy_id)} disabled={busy}>
+                                Tolak
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-foreground/60">menunggu admin lain</span>
+                          ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

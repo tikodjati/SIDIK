@@ -46,7 +46,7 @@ def _copy_out(c: Copy) -> CopyOut:
         recipient_nrp=c.recipient.nrp,
         klasifikasi=c.document.klasifikasi,
         issued_at=c.issued_at,
-        status=c.status,
+        status=c.status or "ISSUED",
         requested_by=c.requested_by,
         approved_by=c.approved_by,
     )
@@ -57,7 +57,7 @@ def _released(session: Session, copy_id: int) -> Copy:
     copy = session.get(Copy, copy_id)
     if copy is None:
         raise HTTPException(404, "salinan tidak ditemukan")
-    if copy.status != "ISSUED":
+    if (copy.status or "ISSUED") != "ISSUED":
         raise HTTPException(409, "Salinan belum disetujui (menunggu persetujuan atau ditolak).")
     return copy
 

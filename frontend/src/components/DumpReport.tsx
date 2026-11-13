@@ -22,7 +22,11 @@ const STATUS: Record<DumpResult["status"], { label: string; tone: Tone; headline
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export default function DumpReport({ result, elapsed }: { result: DumpResult; elapsed: number }) {
-  const status = STATUS[result.status];
+  const status = (result.status && STATUS[result.status]) ?? {
+    label: result.status || "STATUS TIDAK DIKENAL",
+    tone: "muted" as Tone,
+    headline: "Status hasil tidak dikenali",
+  };
   const ids = result.identifiers;
   return (
     <div className="space-y-4">
