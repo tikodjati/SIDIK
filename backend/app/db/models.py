@@ -197,3 +197,18 @@ class CorpusFingerprint(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     corpus_id: Mapped[int] = mapped_column(ForeignKey("public_corpora.id"))
     fp: Mapped[str] = mapped_column(String(64), index=True)
+
+
+class BeaconHit(Base):
+    """Mencatat suar pelacak (Canary Token) yang terpicu saat salinan naskah dibuka."""
+
+    __tablename__ = "beacon_hits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    copy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("copies.copy_id"), index=True)
+    ip_address: Mapped[str] = mapped_column(String(64))
+    user_agent: Mapped[str | None] = mapped_column(String(512), default=None)
+    referer: Mapped[str | None] = mapped_column(String(256), default=None)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    copy: Mapped[Copy] = relationship()

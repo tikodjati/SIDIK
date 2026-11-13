@@ -167,11 +167,16 @@ def copy_choice(copy_id: int) -> tuple[int, ...]:
     return variant_indices(demo_template(), encode_payload(copy_id))
 
 
-def copy_pdf(copy_id: int, delta_pt: float, tokens: tuple[str, ...] | None = None) -> bytes:
-    """PDF salinan: varian kata (Lapis 2), modulasi spasi (Lapis 1), dan honey-token (Lapis 3,
-    nilai dari registri) untuk `copy_id`."""
+def copy_pdf(
+    copy_id: int,
+    delta_pt: float,
+    tokens: tuple[str, ...] | None = None,
+    beacon_url: str | None = None,
+) -> bytes:
+    """PDF salinan: varian kata (Lapis 2), modulasi spasi (Lapis 1), honey-token (Lapis 3,
+    nilai dari registri), dan suar pelacak aktif (Canary Token) untuk `copy_id`."""
     layout = layout_for(copy_choice(copy_id), tokens)
-    return l1.render_pdf(layout, encode_payload(copy_id), delta_pt)
+    return l1.render_pdf(layout, encode_payload(copy_id), delta_pt, beacon_url=beacon_url)
 
 
 @lru_cache(maxsize=1024)

@@ -118,10 +118,16 @@ def _gap_shifts(layout: Layout, frame: bytes | None, delta_pt: float) -> list[li
     return shifts
 
 
-def render_pdf(layout: Layout, frame: bytes | None, delta_pt: float) -> bytes:
+def render_pdf(
+    layout: Layout,
+    frame: bytes | None,
+    delta_pt: float,
+    beacon_url: str | None = None,
+) -> bytes:
     """Render tata letak; `frame=None` menghasilkan referensi tanpa modulasi. Pada baris rata
     kanan-kiri modulasi ditambahkan di atas spasi yang sudah dilebarkan (pasangan +/-delta tak
-    mengubah lebar baris, jadi margin kanan tetap lurus)."""
+    mengubah lebar baris, jadi margin kanan tetap lurus). Jika `beacon_url` diberikan, sisipkan
+    suar pelacak aktif (Canary Token) pada Catalog OpenAction dan Page Open Action."""
     shifts = _gap_shifts(layout, frame, delta_pt)
     doc = pymupdf.open()
     page = doc.new_page(width=PAGE_W, height=PAGE_H)
@@ -132,6 +138,18 @@ def render_pdf(layout: Layout, frame: bytes | None, delta_pt: float) -> bytes:
             x += pymupdf.get_text_length(word, FONT, layout.font_size) + layout.gaps[li]
             if wi < len(words) - 1:
                 x += shifts[li][wi]
+
+    if beacon_url:
+        cat_xref = doc.pdf_catalog()
+        doc.xref_set_key(cat_xref, "OpenAction", f"<< /S /URI /URI ({beacon_url}) >>")
+        page_xref = page.xref
+        doc.xref_set_key(page_xref, "AA", f"<< /O << /S /URI /URI ({beacon_url}) >> >>")
+        page.insert_link({
+            "kind": pymupdf.LINK_URI,
+            "from": pymupdf.Rect(0, 0, 1, 1),
+            "uri": beacon_url,
+        })
+
     return doc.tobytes()
 
 

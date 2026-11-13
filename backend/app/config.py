@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     layer1_delta_pt: float = 0.5
     max_photo_mb: int = 15
     max_dump_mb: int = 20  # berkas dump / korpus data publik (Lapis 4)
+    # Basis URL suar pelacak (Canary Token) yang ditanam di dokumen PDF
+    beacon_base_url: str = "http://localhost:8000"
 
 
     @field_validator("database_url")

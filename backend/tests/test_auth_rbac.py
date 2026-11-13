@@ -13,7 +13,11 @@ from app.main import app
 from tests.conftest import TEST_PASSWORD
 
 # Rute yang sengaja terbuka. Rute baru otomatis wajib login kecuali ditambahkan di sini.
-PUBLIC = {("GET", "/health"), ("POST", "/api/v1/auth/login")}
+PUBLIC = {
+    ("GET", "/health"),
+    ("POST", "/api/v1/auth/login"),
+    ("GET", "/api/v1/beacon/{copy_id}"),
+}
 
 # Matriks peran: (metode, path) -> peran yang boleh. Rute baru wajib dicantumkan.
 A, D, INV = "admin", "distributor", "investigator"
@@ -47,6 +51,8 @@ ALLOWED = {
     ("POST", "/api/v1/intake/dump"): {A, INV},
     ("POST", "/api/v1/copies/{copy_id}/approve"): {A},
     ("POST", "/api/v1/copies/{copy_id}/reject"): {A},
+    ("GET", "/api/v1/beacon/hits"): {A, INV},
+    ("POST", "/api/v1/beacon/{copy_id}/simulate"): {A, INV},
 }
 
 

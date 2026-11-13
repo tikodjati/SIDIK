@@ -137,6 +137,33 @@ export function intakeDump(file: File, caseRef?: string) {
   return request<DumpResult>("/api/v1/intake/dump", { method: "POST", body: form });
 }
 
+export interface BeaconHit {
+  id: number;
+  copy_id: number;
+  ip_address: string;
+  user_agent: string | null;
+  referer: string | null;
+  detected_at: string;
+  document_nomor: string | null;
+  recipient_nama: string | null;
+  recipient_nrp: string | null;
+  klasifikasi: string | null;
+}
+
+export const listBeaconHits = () => request<BeaconHit[]>("/api/v1/beacon/hits");
+
+export const simulateBeaconHit = (
+  copyId: number,
+  ipAddress: string,
+  userAgent: string,
+  referer?: string,
+) =>
+  post<BeaconHit>(`/api/v1/beacon/${copyId}/simulate`, {
+    ip_address: ipAddress,
+    user_agent: userAgent,
+    referer: referer || null,
+  });
+
 /** Simpan Blob sebagai berkas unduhan di peramban. */
 export function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RequireRole, useAuth } from "@/components/AuthProvider";
+import BeaconRadar from "@/components/BeaconRadar";
 import DumpReport from "@/components/DumpReport";
 import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } from "@/components/ui";
 import {
@@ -49,7 +50,7 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
   },
 };
 
-type Mode = "foto" | "teks" | "dump";
+type Mode = "foto" | "teks" | "dump" | "radar";
 
 /** Arti kemiripan teks bukti dengan naskah resmi (pasangan kata berurutan yang sama). */
 function similarityMeaning(x: number): string {
@@ -82,6 +83,7 @@ function AttributionRows({ a }: { a: Attribution }) {
 function InvestigasiPanel() {
   const { user } = useAuth();
   const canSimulate = user?.role === "admin"; // teks salinan hanya boleh dibaca admin
+  const canAccessCopies = user?.role === "admin" || user?.role === "distributor";
   const [mode, setMode] = useState<Mode>("foto");
   const [text, setText] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -111,11 +113,11 @@ function InvestigasiPanel() {
   }, [busy]);
 
   useEffect(() => {
-    if (!canSimulate) return;
+    if (!canAccessCopies) return;
     listCopies()
       .then((rows) => setCopies(rows.filter((c) => !c.status || c.status === "ISSUED"))) // hanya yang beredar
       .catch(() => setCopies([]));
-  }, [canSimulate]);
+  }, [canAccessCopies]);
 
   async function analyse() {
     setBusy(true);
@@ -155,244 +157,254 @@ function InvestigasiPanel() {
     }`;
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-2">
-      <div className="space-y-4">
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-mono text-2xl font-bold text-accent">Investigasi Kebocoran</h1>
-
-        <div className="flex gap-2" role="tablist" aria-label="Jenis bukti">
-          <button type="button" role="tab" aria-selected={mode === "foto"} className={tabClass("foto")} onClick={() => setMode("foto")}>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Jenis bukti">
+          <button type="button" role="tab" aria-selected={mode === "foto"} className={tabClass("foto")} onClick={() => { setMode("foto"); setResult(null); setDumpResult(null); }}>
             Foto / scan (Lapis 1 + 2 + 3)
           </button>
-          <button type="button" role="tab" aria-selected={mode === "teks"} className={tabClass("teks")} onClick={() => setMode("teks")}>
+          <button type="button" role="tab" aria-selected={mode === "teks"} className={tabClass("teks")} onClick={() => { setMode("teks"); setResult(null); setDumpResult(null); }}>
             Teks / ketik ulang / parafrase (Lapis 2 + 3)
           </button>
-          <button type="button" role="tab" aria-selected={mode === "dump"} className={tabClass("dump")} onClick={() => setMode("dump")}>
+          <button type="button" role="tab" aria-selected={mode === "dump"} className={tabClass("dump")} onClick={() => { setMode("dump"); setResult(null); setDumpResult(null); }}>
             Data dump (Lapis 4)
           </button>
+          <button type="button" role="tab" aria-selected={mode === "radar"} className={tabClass("radar")} onClick={() => { setMode("radar"); setResult(null); setDumpResult(null); }}>
+            📡 Suar Pelacak (Canary Token)
+          </button>
         </div>
+      </div>
 
-        <Card title={mode === "foto" ? "Foto halaman yang bocor" : mode === "dump" ? "Data dump yang beredar" : "Teks yang bocor"}>
-          <div className="space-y-3">
-            {mode === "dump" ? (
-              <>
-                <input
-                  type="file"
-                  accept=".csv,.sql,.json,.txt,text/plain,text/csv,application/json"
-                  aria-label="Berkas dump kebocoran"
-                  onChange={(e) => {
-                    setDumpFile(e.target.files?.[0] ?? null);
-                    setDumpResult(null);
-                  }}
-                  className="block w-full text-sm file:mr-3 file:rounded file:border file:border-accent file:bg-accent/15 file:px-3 file:py-1.5 file:font-mono file:text-xs file:font-bold file:uppercase file:text-accent"
-                />
-                <p className="text-xs text-foreground/60">
-                  Berkas CSV, SQL, JSON, atau teks yang diklaim sebagai bocoran basis data. Sistem
-                  mencari honey-record, lalu membandingkan identitasnya dengan data personel dan
-                  korpus data publik lama.
-                </p>
-              </>
-            ) : mode === "foto" ? (
-              <>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  aria-label="Foto bukti kebocoran"
-                  onChange={(e) => {
-                    setPhoto(e.target.files?.[0] ?? null);
-                    setResult(null);
-                  }}
-                  className="block w-full text-sm file:mr-3 file:rounded file:border file:border-accent file:bg-accent/15 file:px-3 file:py-1.5 file:font-mono file:text-xs file:font-bold file:uppercase file:text-accent"
-                />
-                {photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- pratinjau berkas lokal (blob:)
-                  <img src={photoUrl} alt="Pratinjau foto bukti" className="max-h-72 rounded border border-border" />
+      {mode === "radar" ? (
+        <BeaconRadar copies={copies} />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            <Card title={mode === "foto" ? "Foto halaman yang bocor" : mode === "dump" ? "Data dump yang beredar" : "Teks yang bocor"}>
+              <div className="space-y-3">
+                {mode === "dump" ? (
+                  <>
+                    <input
+                      type="file"
+                      accept=".csv,.sql,.json,.txt,text/plain,text/csv,application/json"
+                      aria-label="Berkas dump kebocoran"
+                      onChange={(e) => {
+                        setDumpFile(e.target.files?.[0] ?? null);
+                        setDumpResult(null);
+                      }}
+                      className="block w-full text-sm file:mr-3 file:rounded file:border file:border-accent file:bg-accent/15 file:px-3 file:py-1.5 file:font-mono file:text-xs file:font-bold file:uppercase file:text-accent"
+                    />
+                    <p className="text-xs text-foreground/60">
+                      Berkas CSV, SQL, JSON, atau teks yang diklaim sebagai bocoran basis data. Sistem
+                      mencari honey-record, lalu membandingkan identitasnya dengan data personel dan
+                      korpus data publik lama.
+                    </p>
+                  </>
+                ) : mode === "foto" ? (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      aria-label="Foto bukti kebocoran"
+                      onChange={(e) => {
+                        setPhoto(e.target.files?.[0] ?? null);
+                        setResult(null);
+                      }}
+                      className="block w-full text-sm file:mr-3 file:rounded file:border file:border-accent file:bg-accent/15 file:px-3 file:py-1.5 file:font-mono file:text-xs file:font-bold file:uppercase file:text-accent"
+                    />
+                    {photoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element -- pratinjau berkas lokal (blob:)
+                      <img src={photoUrl} alt="Pratinjau foto bukti" className="max-h-72 rounded border border-border" />
+                    )}
+                    <p className="text-xs text-foreground/60">
+                      Foto kertas cetak PDF salinan dari halaman Distribusi. Usahakan seluruh halaman
+                      terlihat dan tajam; miring atau terputar tidak masalah.
+                    </p>
+                  </>
+                ) : (
+                  <textarea
+                    aria-label="Teks bukti kebocoran"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={12}
+                    placeholder="Tempel teks yang beredar: disalin dari PDF, diketik ulang, potongan, atau berubah huruf…"
+                    className="w-full rounded border border-border bg-background p-3 font-mono text-xs outline-none focus:border-accent"
+                  />
                 )}
-                <p className="text-xs text-foreground/60">
-                  Foto kertas cetak PDF salinan dari halaman Distribusi. Usahakan seluruh halaman
-                  terlihat dan tajam; miring atau terputar tidak masalah.
-                </p>
-              </>
-            ) : (
-              <textarea
-                aria-label="Teks bukti kebocoran"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={12}
-                placeholder="Tempel teks yang beredar: disalin dari PDF, diketik ulang, potongan, atau berubah huruf…"
-                className="w-full rounded border border-border bg-background p-3 font-mono text-xs outline-none focus:border-accent"
-              />
+                <Field label="Nomor perkara (opsional)">
+                  <input className={inputClass} value={caseRef} onChange={(e) => setCaseRef(e.target.value)} />
+                </Field>
+                <ErrorNote message={error} />
+                <Button onClick={analyse} disabled={busy || !ready}>
+                  {busy ? "Menganalisis…" : "Analisis bukti"}
+                </Button>
+              </div>
+            </Card>
+
+            {canSimulate && mode === "teks" && (
+              <Card title="Simulasi kebocoran teks (untuk demo)">
+                <div className="space-y-3">
+                  <Field label="Salinan yang bocor">
+                    <select className={inputClass} value={simCopy} onChange={(e) => setSimCopy(e.target.value)}>
+                      <option value="">pilih salinan…</option>
+                      {copies.map((c) => (
+                        <option key={c.copy_id} value={c.copy_id}>
+                          {hexId(c.copy_id)} · {c.recipient_nama}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={`Bagian teks yang disalin: ${fraction}%`}>
+                    <input
+                      type="range"
+                      min={20}
+                      max={100}
+                      value={fraction}
+                      onChange={(e) => setFraction(Number(e.target.value))}
+                      className="w-full accent-accent"
+                    />
+                  </Field>
+                  <div className="flex gap-5 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={upper} onChange={(e) => setUpper(e.target.checked)} />
+                      huruf kapital
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={typos} onChange={(e) => setTypos(e.target.checked)} />
+                      salah ketik (1%)
+                    </label>
+                  </div>
+                  <Button tone="muted" onClick={simulate} disabled={!simCopy}>
+                    Buat teks bocor simulasi
+                  </Button>
+                </div>
+              </Card>
             )}
-            <Field label="Nomor perkara (opsional)">
-              <input className={inputClass} value={caseRef} onChange={(e) => setCaseRef(e.target.value)} />
-            </Field>
-            <ErrorNote message={error} />
-            <Button onClick={analyse} disabled={busy || !ready}>
-              {busy ? "Menganalisis…" : "Analisis bukti"}
-            </Button>
           </div>
-        </Card>
 
-        {canSimulate && mode === "teks" && (
-          <Card title="Simulasi kebocoran teks (untuk demo)">
-            <div className="space-y-3">
-              <Field label="Salinan yang bocor">
-                <select className={inputClass} value={simCopy} onChange={(e) => setSimCopy(e.target.value)}>
-                  <option value="">pilih salinan…</option>
-                  {copies.map((c) => (
-                    <option key={c.copy_id} value={c.copy_id}>
-                      {hexId(c.copy_id)} · {c.recipient_nama}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={`Bagian teks yang disalin: ${fraction}%`}>
-                <input
-                  type="range"
-                  min={20}
-                  max={100}
-                  value={fraction}
-                  onChange={(e) => setFraction(Number(e.target.value))}
-                  className="w-full accent-accent"
-                />
-              </Field>
-              <div className="flex gap-5 text-sm">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={upper} onChange={(e) => setUpper(e.target.checked)} />
-                  huruf kapital
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={typos} onChange={(e) => setTypos(e.target.checked)} />
-                  salah ketik (1%)
-                </label>
-              </div>
-              <Button tone="muted" onClick={simulate} disabled={!simCopy}>
-                Buat teks bocor simulasi
-              </Button>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      <div className="lg:pt-12">
-        <Card title="Hasil forensik" className="min-h-64">
-          {busy && (
-            <p className="animate-pulse font-mono text-sm text-accent">
-              {resultMode === "foto"
-                ? "Meluruskan halaman, membaca pilihan kata dan angka token, lalu mengukur spasi…"
-                : resultMode === "dump"
-                  ? "Mencari honey-record dan mencocokkan identitas…"
-                  : "Membaca pilihan kata dan mencari honey-token…"}{" "}
-              {elapsed.toFixed(0)} dtk
-            </p>
-          )}
-          {!busy && dumpResult && <DumpReport result={dumpResult} elapsed={elapsed} />}
-          {!busy && !result && !dumpResult && (
-            <p className="text-sm text-foreground/60">
-              Unggah foto atau tempel teks, lalu jalankan analisis. Sistem hanya memberi atribusi
-              bila bukti cukup dan salinan terdaftar; selain itu ia menolak.
-            </p>
-          )}
-          {result && status && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge tone={status.tone}>{status.label}</Badge>
-                <span className="text-sm text-foreground/70">{status.headline}</span>
-                <span className="text-xs text-foreground/50">({elapsed.toFixed(1)} dtk)</span>
-              </div>
-
-              <div>
-                <div className="mb-1 flex justify-between text-xs text-foreground/60">
-                  <span>{resultMode === "foto" ? "Penanda terbaca (gabungan)" : "Bit penanda terbaca"}</span>
-                  <span className="font-mono">
-                    {result.observed_bits} / {result.total_bits}
-                  </span>
-                </div>
-                <div className="h-2 rounded bg-background" role="progressbar" aria-valuenow={meter} aria-valuemin={0} aria-valuemax={100}>
-                  <div
-                    className={`h-2 rounded ${result.attributions?.length ? "bg-accent" : "bg-danger"}`}
-                    style={{ width: `${meter}%` }}
-                  />
-                </div>
-              </div>
-
-              {result.layers && result.layers.length > 0 && (
-                <ul className="space-y-1 text-xs">
-                  {result.layers.map((r) => (
-                    <li key={r.layer} className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-foreground/70">{LAYER_LABEL[r.layer]}</span>
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono text-foreground/60">
-                          {r.observed_bits} / {r.total_bits}
-                          {r.layer === "L3_TOKEN" ? " token" : " bit"}
-                        </span>
-                        <Badge tone={r.decoded_alone ? "ok" : "muted"}>
-                          {r.decoded_alone ? "TERBACA" : "KURANG"}
-                        </Badge>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {result.official_similarity != null && (
-                <p className="text-xs text-foreground/70">
-                  Kemiripan dengan naskah resmi:{" "}
-                  <span className="font-mono font-bold">{Math.round(result.official_similarity * 100)}%</span> ·{" "}
-                  {similarityMeaning(result.official_similarity)}
+          <div>
+            <Card title="Hasil forensik" className="min-h-64">
+              {busy && (
+                <p className="animate-pulse font-mono text-sm text-accent">
+                  {resultMode === "foto"
+                    ? "Meluruskan halaman, membaca pilihan kata dan angka token, lalu mengukur spasi…"
+                    : resultMode === "dump"
+                      ? "Mencari honey-record dan mencocokkan identitas…"
+                      : "Membaca pilihan kata dan mencari honey-token…"}{" "}
+                  {elapsed.toFixed(0)} dtk
                 </p>
               )}
+              {!busy && dumpResult && <DumpReport result={dumpResult} elapsed={elapsed} />}
+              {!busy && !result && !dumpResult && (
+                <p className="text-sm text-foreground/60">
+                  Unggah foto atau tempel teks, lalu jalankan analisis. Sistem hanya memberi atribusi
+                  bila bukti cukup dan salinan terdaftar; selain itu ia menolak.
+                </p>
+              )}
+              {result && status && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge tone={status.tone}>{status.label}</Badge>
+                    <span className="text-sm text-foreground/70">{status.headline}</span>
+                    <span className="text-xs text-foreground/50">({elapsed.toFixed(1)} dtk)</span>
+                  </div>
 
-              {result.attributions?.map((a, i) => (
-                <div key={a.copy_id} className={i > 0 ? "border-t border-border pt-3" : undefined}>
-                  {result.attributions!.length > 1 && (
-                    <p className="mb-1 font-mono text-xs font-bold text-accent">Salinan {i + 1}</p>
-                  )}
-                  <AttributionRows a={a} />
-                </div>
-              ))}
+                  <div>
+                    <div className="mb-1 flex justify-between text-xs text-foreground/60">
+                      <span>{resultMode === "foto" ? "Penanda terbaca (gabungan)" : "Bit penanda terbaca"}</span>
+                      <span className="font-mono">
+                        {result.observed_bits} / {result.total_bits}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded bg-background" role="progressbar" aria-valuenow={meter} aria-valuemin={0} aria-valuemax={100}>
+                      <div
+                        className={`h-2 rounded ${result.attributions?.length ? "bg-accent" : "bg-danger"}`}
+                        style={{ width: `${meter}%` }}
+                      />
+                    </div>
+                  </div>
 
-              {result.tokens && result.tokens.length > 0 && (
-                <div>
-                  <p className="mb-1 text-xs text-foreground/60">Honey-token ditemukan di bukti</p>
-                  <ul className="space-y-1 text-xs">
-                    {result.tokens.map((t) => (
-                      <li key={`${t.copy_id}-${t.token_index}`} className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-mono">{t.value}</span>
-                        <span className="flex items-center gap-2">
-                          <span className="text-foreground/70">
-                            {t.recipient_nama} · <span className="font-mono">{t.recipient_nrp}</span>
+                  {result.layers && result.layers.length > 0 && (
+                    <ul className="space-y-1 text-xs">
+                      {result.layers.map((r) => (
+                        <li key={r.layer} className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-foreground/70">{LAYER_LABEL[r.layer]}</span>
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono text-foreground/60">
+                              {r.observed_bits} / {r.total_bits}
+                              {r.layer === "L3_TOKEN" ? " token" : " bit"}
+                            </span>
+                            <Badge tone={r.decoded_alone ? "ok" : "muted"}>
+                              {r.decoded_alone ? "TERBACA" : "KURANG"}
+                            </Badge>
                           </span>
-                          <Badge tone={t.confirmed ? "ok" : "muted"}>{t.confirmed ? "TERKONFIRMASI" : "INDIKASI"}</Badge>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {result.official_similarity != null && (
+                    <p className="text-xs text-foreground/70">
+                      Kemiripan dengan naskah resmi:{" "}
+                      <span className="font-mono font-bold">{Math.round(result.official_similarity * 100)}%</span> ·{" "}
+                      {similarityMeaning(result.official_similarity)}
+                    </p>
+                  )}
+
+                  {result.attributions?.map((a, i) => (
+                    <div key={a.copy_id} className={i > 0 ? "border-t border-border pt-3" : undefined}>
+                      {result.attributions!.length > 1 && (
+                        <p className="mb-1 font-mono text-xs font-bold text-accent">Salinan {i + 1}</p>
+                      )}
+                      <AttributionRows a={a} />
+                    </div>
+                  ))}
+
+                  {result.tokens && result.tokens.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs text-foreground/60">Honey-token ditemukan di bukti</p>
+                      <ul className="space-y-1 text-xs">
+                        {result.tokens.map((t) => (
+                          <li key={`${t.copy_id}-${t.token_index}`} className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-mono">{t.value}</span>
+                            <span className="flex items-center gap-2">
+                              <span className="text-foreground/70">
+                                {t.recipient_nama} · <span className="font-mono">{t.recipient_nrp}</span>
+                              </span>
+                              <Badge tone={t.confirmed ? "ok" : "muted"}>{t.confirmed ? "TERKONFIRMASI" : "INDIKASI"}</Badge>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.aligned_preview && (
+                    <figure>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- gambar data: dari API */}
+                      <img
+                        src={`data:image/jpeg;base64,${result.aligned_preview}`}
+                        alt="Foto setelah diluruskan ke template"
+                        className="max-h-80 rounded border border-border"
+                      />
+                      <figcaption className="mt-1 text-xs text-foreground/60">
+                        Foto setelah diluruskan (perspektif, rotasi, skala cetak dikoreksi).
+                      </figcaption>
+                    </figure>
+                  )}
+
+                  <p className="text-xs text-foreground/70">{result.note}</p>
+                  <p className="border-t border-border pt-3 font-mono text-xs text-foreground/60">
+                    Tercatat di ledger #{result.ledger.seq} · {shortHash(result.ledger.entry_hash, 16)}
+                  </p>
                 </div>
               )}
-
-              {result.aligned_preview && (
-                <figure>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- gambar data: dari API */}
-                  <img
-                    src={`data:image/jpeg;base64,${result.aligned_preview}`}
-                    alt="Foto setelah diluruskan ke template"
-                    className="max-h-80 rounded border border-border"
-                  />
-                  <figcaption className="mt-1 text-xs text-foreground/60">
-                    Foto setelah diluruskan (perspektif, rotasi, skala cetak dikoreksi).
-                  </figcaption>
-                </figure>
-              )}
-
-              <p className="text-xs text-foreground/70">{result.note}</p>
-              <p className="border-t border-border pt-3 font-mono text-xs text-foreground/60">
-                Tercatat di ledger #{result.ledger.seq} · {shortHash(result.ledger.entry_hash, 16)}
-              </p>
-            </div>
-          )}
-        </Card>
-      </div>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

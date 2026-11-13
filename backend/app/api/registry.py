@@ -136,7 +136,8 @@ def copy_pdf(
     Pemenggalan baris sama untuk semua salinan. Setiap unduhan dicatat."""
     copy = _released(session, copy_id)
     tokens = l3.ensure_tokens(session, copy, demo_template())
-    pdf = naskah.copy_pdf(copy_id, settings.layer1_delta_pt, tokens)
+    beacon_url = f"{settings.beacon_base_url}/api/v1/beacon/{copy_id}"
+    pdf = naskah.copy_pdf(copy_id, settings.layer1_delta_pt, tokens, beacon_url=beacon_url)
     data = {"copy_id": copy_id, "document_nomor": copy.document.nomor, "format": "pdf"}
     append_event(session, signer, "COPY_EXPORTED", data, user.username)
     session.commit()
