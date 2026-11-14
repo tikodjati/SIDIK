@@ -99,9 +99,9 @@ export default function Home() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)] lg:items-start">
         {seesAudit(role) && (
-          <Card title="Aktivitas terakhir">
+          <Card title="Aktivitas terakhir" className="min-w-0">
             {!audit || audit.ledger.length === 0 ? (
               <p className="text-sm text-foreground/60">Belum ada aktivitas.</p>
             ) : (
@@ -124,8 +124,8 @@ export default function Home() {
           </Card>
         )}
 
-        <Card title="Tugas Anda">
-          <ul className="space-y-2 text-sm">
+        <Card title="Tugas Anda" className="min-w-0">
+          <ul className="space-y-2 text-sm leading-relaxed">
             {seesRegistry(role) && (
               <li>
                 <Link className="text-accent hover:underline" href="/distribusi">
