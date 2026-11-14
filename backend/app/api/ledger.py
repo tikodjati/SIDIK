@@ -21,10 +21,16 @@ def list_entries(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     newest_first: bool = False,
+    include_beacon: bool = False,
     session: Session = Depends(get_session),
 ) -> list[LedgerEntry]:
     order = LedgerEntry.seq.desc() if newest_first else LedgerEntry.seq
-    return list(session.scalars(select(LedgerEntry).order_by(order).offset(offset).limit(limit)))
+    stmt = select(LedgerEntry)
+    if not include_beacon:
+        # Event suar pelacak (BEACON_*) punya halaman histori sendiri (/suar); jangan ramaikan
+        # audit trail. Event-nya tetap tertulis dan tertanda tangan di rantai yang sama.
+        stmt = stmt.where(~LedgerEntry.body.like('%"event":"BEACON%'))
+    return list(session.scalars(stmt.order_by(order).offset(offset).limit(limit)))
 
 
 @router.get("/verify", response_model=VerifyOut)

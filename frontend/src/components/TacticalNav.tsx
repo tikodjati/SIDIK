@@ -11,6 +11,7 @@ const links: { href: string; label: string; roles: Role[] }[] = [
   { href: "/distribusi", label: "Distribusi", roles: ["admin", "distributor"] },
   { href: "/personel", label: "Data Personel", roles: ["admin", "distributor"] },
   { href: "/investigasi", label: "Investigasi", roles: ["admin", "investigator"] },
+  { href: "/suar", label: "Suar Pelacak", roles: ["admin", "investigator"] },
   { href: "/audit", label: "Audit Trail", roles: ["admin", "investigator"] },
   { href: "/pengguna", label: "Pengguna", roles: ["admin"] },
 ];

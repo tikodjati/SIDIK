@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RequireRole, useAuth } from "@/components/AuthProvider";
-import BeaconRadar from "@/components/BeaconRadar";
 import DumpReport from "@/components/DumpReport";
 import { Badge, Button, Card, ErrorNote, Field, Row, inputClass, type Tone } from "@/components/ui";
 import {
@@ -50,7 +49,7 @@ const STATUS: Record<IntakeResult["status"], { label: string; tone: Tone; headli
   },
 };
 
-type Mode = "foto" | "teks" | "dump" | "radar";
+type Mode = "foto" | "teks" | "dump";
 
 /** Arti kemiripan teks bukti dengan naskah resmi (pasangan kata berurutan yang sama). */
 function similarityMeaning(x: number): string {
@@ -170,16 +169,10 @@ function InvestigasiPanel() {
           <button type="button" role="tab" aria-selected={mode === "dump"} className={tabClass("dump")} onClick={() => { setMode("dump"); setResult(null); setDumpResult(null); }}>
             Data dump (Lapis 4)
           </button>
-          <button type="button" role="tab" aria-selected={mode === "radar"} className={tabClass("radar")} onClick={() => { setMode("radar"); setResult(null); setDumpResult(null); }}>
-            📡 Suar Pelacak (Canary Token)
-          </button>
         </div>
       </div>
 
-      {mode === "radar" ? (
-        <BeaconRadar copies={copies} />
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-4">
             <Card title={mode === "foto" ? "Foto halaman yang bocor" : mode === "dump" ? "Data dump yang beredar" : "Teks yang bocor"}>
               <div className="space-y-3">
@@ -404,7 +397,6 @@ function InvestigasiPanel() {
             </Card>
           </div>
         </div>
-      )}
     </div>
   );
 }
