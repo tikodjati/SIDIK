@@ -14,8 +14,10 @@ OUT = ROOT / "deploy" / "_hf_space_out"
 
 SKIP = shutil.ignore_patterns(
     "node_modules", ".next", "__pycache__", "*.pyc", ".venv", ".env*", "*.pem", "*.db",
-    "*.tsbuildinfo", ".DS_Store",
+    "*.tsbuildinfo", ".DS_Store", "favicon.ico",
 )  # fmt: skip
+# favicon.ico dikecualikan: Hugging Face dapat menolak push yang memuat berkas biner lewat git
+# biasa (harus memakai Xet/LFS). Akibatnya hanya ikon tab browser; aplikasi tidak terpengaruh.
 
 
 def copy_tree(src: Path, dst: Path) -> None:
