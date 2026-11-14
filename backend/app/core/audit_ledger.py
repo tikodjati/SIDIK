@@ -52,6 +52,19 @@ class Signer:
         return self._private.sign(data)
 
     @classmethod
+    def from_pem_text(cls, pem: str) -> "Signer":
+        """Muat kunci dari teks PEM (untuk host tanpa disk permanen, mis. container deploy).
+
+        Baris baru boleh ditulis sebagai `\\n`, karena banyak dashboard menjadikan variabel
+        satu baris."""
+        key = serialization.load_pem_private_key(
+            pem.replace("\\n", "\n").strip().encode(), password=None
+        )
+        if not isinstance(key, Ed25519PrivateKey):
+            raise ValueError("SIDIK_SIGNING_KEY_PEM bukan kunci Ed25519")
+        return cls(key)
+
+    @classmethod
     def load_or_create(cls, path: str | Path, create: bool = True) -> "Signer":
         """Muat kunci dari PEM; buat baru bila belum ada dan `create` (hanya pengembangan)."""
         path = Path(path)
@@ -84,6 +97,8 @@ class Signer:
 def get_signer() -> Signer:
     from app.config import settings
 
+    if settings.signing_key_pem:
+        return Signer.from_pem_text(settings.signing_key_pem)
     return Signer.load_or_create(settings.signing_key_path, settings.signing_key_autocreate)
 
 

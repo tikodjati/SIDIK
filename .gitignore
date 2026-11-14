@@ -80,3 +80,9 @@ yarn-error.log*
 htmlcov/
 .pytest_cache/
 frontend/AGENTS.md
+
+# Hasil rakitan paket Hugging Face Space (dibuat oleh deploy/make_hf_space.py)
+deploy/_hf_space_out/
+
+# Panduan operasional tim (akun, rahasia, langkah push): tetap lokal, tidak masuk repo
+docs/*.local.md

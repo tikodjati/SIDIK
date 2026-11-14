@@ -21,7 +21,9 @@ export type User = Schemas["UserOut"];
 export type UserInput = Schemas["UserCreate"];
 export type Role = User["role"];
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// "/" berarti satu domain dengan web (lewat rewrite /api di next.config.ts): hasilnya "" sehingga
+// request relatif. Tanpa variabel ini, pengembangan lokal memakai API di port 8000.
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 /** Dipancarkan saat API menjawab 401, supaya AuthProvider mengarahkan ke halaman login. */
 export const UNAUTHORIZED_EVENT = "sidik:unauthorized";
 

@@ -147,3 +147,18 @@ def test_provider_database_url_gets_the_psycopg_driver(prefix):
 
     url = Settings(database_url=f"{prefix}u:p@h.neon.tech/db?sslmode=require").database_url
     assert url == "postgresql+psycopg://u:p@h.neon.tech/db?sslmode=require"
+
+
+def test_signer_from_pem_text_matches_file_key(tmp_path):
+    """Kunci dari variabel lingkungan (tanpa disk permanen) harus identik dengan kunci berkas,
+    termasuk bila baris barunya ditulis sebagai `\n` literal oleh dashboard hosting."""
+    path = tmp_path / "k.pem"
+    from_file = ledger.Signer.load_or_create(path)
+    pem = path.read_text()
+    assert ledger.Signer.from_pem_text(pem).key_id == from_file.key_id
+    assert ledger.Signer.from_pem_text(pem.replace("\n", "\n")).key_id == from_file.key_id
+
+
+def test_signer_from_pem_text_rejects_garbage():
+    with pytest.raises(ValueError):
+        ledger.Signer.from_pem_text("bukan pem")

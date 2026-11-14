@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Database bersama: false agar server tanpa berkas kunci tim gagal jelas, bukan membuat
     # kunci baru yang entrinya tak bisa diverifikasi anggota tim lain.
     signing_key_autocreate: bool = True
+    # Isi PEM kunci ledger langsung (untuk host tanpa disk permanen). Bila diisi, mengalahkan
+    # signing_key_path. Perlakukan sebagai rahasia.
+    signing_key_pem: str | None = None
     data_dir: str = str(Path(__file__).resolve().parents[2] / "data")
     cors_origins: list[str] = ["http://localhost:3000"]
     session_hours: int = 8
