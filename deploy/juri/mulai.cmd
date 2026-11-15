@@ -58,7 +58,14 @@ if errorlevel 1 goto gagal
 
 echo.
 echo SIDIK siap: http://localhost:%SIDIK_PORT%
-echo Akun dan langkah uji: MULAI-DI-SINI.md. Bahan uji: folder bahan_uji\
+echo.
+echo Akun ^(kata sandi semuanya: Juri-SIDIK-2026^):
+echo   juri1         admin ^(cukup untuk mencoba hampir semuanya^)
+echo   juri2         admin kedua ^(untuk persetujuan ganda^)
+echo   distributor   distributor
+echo   investigator  investigator
+echo.
+echo Langkah uji: MULAI-DI-SINI.md. Bahan uji: folder bahan_uji\
 start "" http://localhost:%SIDIK_PORT%
 goto selesai
 
