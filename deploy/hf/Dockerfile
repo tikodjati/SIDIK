@@ -22,8 +22,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=web /usr/local/bin/node /usr/local/bin/node
 
-# Hugging Face menjalankan container sebagai user 1000.
-RUN useradd -m -u 1000 user
+# Berjalan sebagai user 1000 (aturan banyak host). Folder data dibuat dan dimiliki user lebih dulu
+# supaya volume yang dipasang di sana (paket juri) bisa ditulis, termasuk pembuatan kunci ledger.
+RUN useradd -m -u 1000 user \
+    && mkdir -p /home/user/app/data/keys \
+    && chown -R user:user /home/user/app
 USER user
 ENV HOME=/home/user
 WORKDIR /home/user/app
@@ -38,7 +41,7 @@ COPY --chown=user backend/alembic backend/alembic
 COPY --chown=user backend/scripts backend/scripts
 COPY --chown=user data/master_templates data/master_templates
 COPY --from=web --chown=user /web web
-COPY --chown=user start.sh start.sh
+COPY --chown=user deploy/hf/start.sh start.sh
 
 ENV SIDIK_DATA_DIR=/home/user/app/data \
     SIDIK_COOKIE_SECURE=true \

@@ -86,3 +86,6 @@ deploy/_hf_space_out/
 
 # Panduan operasional tim (akun, rahasia, langkah push): tetap lokal, tidak masuk repo
 docs/*.local.md
+
+# Paket juri rakitan (deploy/make_juri_package.py)
+deploy/_juri_out/
