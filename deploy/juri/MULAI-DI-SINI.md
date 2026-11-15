@@ -5,7 +5,7 @@ Sistem berjalan di komputer Anda lewat Docker, dengan akun dan data demo yang su
 1. Pasang dan jalankan **Docker Desktop** (https://www.docker.com/products/docker-desktop/).
 2. **Windows:** klik dua kali `mulai.cmd`. **Linux/macOS:** jalankan `./mulai.sh`.
    Jalan pertama sekitar 5-15 menit (mengunduh komponen). Berikutnya hanya beberapa detik.
-3. Buka **http://localhost:3000** setelah muncul tulisan "SIDIK siap".
+3. Buka alamat yang tertulis setelah muncul "SIDIK siap" (biasanya **http://localhost:3000**; bila port itu terpakai, angkanya otomatis berbeda). Browser juga terbuka sendiri.
 
 ## Akun (semua bersandi `Juri-SIDIK-2026`)
 

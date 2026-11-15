@@ -16,7 +16,7 @@ Ringkasan: **pasang Docker → klik dua kali `mulai.cmd` (Windows) atau jalankan
 | RAM | Sisakan minimal **4 GB** untuk Docker. Sistem memakai sekitar 1 GB setelah dipakai (terukur: aplikasi 0,8 GB + database 0,05 GB). |
 | Ruang disk | Sekitar **6 GB** (image dan komponen build). |
 | Internet | Hanya untuk **jalan pertama** (mengunduh komponen). Setelah itu tidak perlu. Paket `-offline` tidak butuh internet sama sekali. |
-| Port | 3000 (bisa diganti, lihat bagian 7). |
+| Port | 3000; bila terpakai, otomatis memakai yang kosong (3001, 3002, ...). Alamat akhirnya tertulis di layar. |
 
 Docker Desktop harus **sedang berjalan** (ikon paus di baris tugas/menu bar tidak berstatus
 "starting").
@@ -28,7 +28,7 @@ Docker Desktop harus **sedang berjalan** (ikon paus di baris tugas/menu bar tida
    - **Windows:** klik dua kali **`mulai.cmd`**.
    - **Linux/macOS:** buka terminal di folder ini, jalankan `./mulai.sh`
      (bila ditolak: `bash mulai.sh`).
-3. Tunggu sampai muncul tulisan **`SIDIK siap: http://localhost:3000`**. Browser terbuka otomatis.
+3. Tunggu sampai muncul tulisan **`SIDIK siap: http://localhost:3000`** (angka port bisa berbeda bila 3000 terpakai). Browser terbuka otomatis.
 
 Jalan pertama membangun image: **sekitar 5-15 menit** tergantung internet. Jalan berikutnya hanya
 beberapa detik. Skrip aman dijalankan berulang kali dan tidak menggandakan data.
@@ -126,7 +126,7 @@ komponen tampilannya dari internet, jadi butuh koneksi.
 | Gejala | Penyebab dan tindakan |
 | :--- | :--- |
 | "Docker belum terpasang / belum berjalan" | Pasang atau buka Docker Desktop, tunggu hingga siap, jalankan ulang. |
-| "port is already allocated" / bentrok port 3000 | Port dipakai aplikasi lain. Windows: buka Command Prompt di folder ini, ketik `set SIDIK_PORT=3300`, lalu `mulai.cmd` (jangan klik dua kali). Linux/macOS: `SIDIK_PORT=3300 ./mulai.sh`. Lalu buka `http://localhost:3300`. |
+| "port is already allocated" / bentrok port | Biasanya tidak terjadi: skrip memilih port kosong sendiri dan menampilkan alamatnya. Untuk memaksa port tertentu, Windows: Command Prompt di folder ini, `set SIDIK_PORT=3300` lalu `mulai.cmd`. Linux/macOS: `SIDIK_PORT=3300 ./mulai.sh`. |
 | Build gagal / terhenti saat mengunduh | Koneksi terputus. Jalankan ulang `mulai`; unduhan yang selesai tidak diulang. Bila internet sulit, minta paket `-offline`. |
 | "no space left on device" | Ruang disk Docker habis. Kosongkan lewat Docker Desktop (Settings → Resources) lalu ulangi. |
 | Sistem sangat lambat atau analisis foto gagal | Docker kekurangan memori. Docker Desktop → Settings → Resources → Memory, naikkan ke **4 GB atau lebih**. |

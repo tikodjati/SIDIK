@@ -3,7 +3,6 @@
 # menyiapkan bahan uji. Aman dijalankan berulang kali.
 set -euo pipefail
 cd "$(dirname "$0")"
-export SIDIK_PORT="${SIDIK_PORT:-3000}"
 export MSYS_NO_PATHCONV=1 # Git Bash di Windows tidak boleh mengubah path di dalam container
 COMPOSE=(docker compose -f juri/docker-compose.yml)
 
@@ -21,6 +20,18 @@ if ! docker compose version >/dev/null 2>&1; then
   echo "Perlu Docker Compose v2 (perintah 'docker compose'). Perbarui Docker Desktop."
   exit 1
 fi
+
+# Port: dipakai yang diminta (SIDIK_PORT), atau port stack ini yang sudah jalan, atau yang pertama kosong.
+if [ -z "${SIDIK_PORT:-}" ]; then
+  SIDIK_PORT="$("${COMPOSE[@]}" port app 7860 2>/dev/null | sed 's/.*://' || true)"
+  if [ -z "$SIDIK_PORT" ]; then
+    for p in 3000 3001 3002 3300 3301 8080; do
+      if ! (exec 3<>"/dev/tcp/127.0.0.1/$p") 2>/dev/null; then SIDIK_PORT=$p; break; fi
+    done
+  fi
+  SIDIK_PORT="${SIDIK_PORT:-3000}"
+fi
+export SIDIK_PORT
 
 if [ -f sidik-image.tar.gz ] && ! docker image inspect sidik-juri:latest >/dev/null 2>&1; then
   echo "Memuat image siap pakai (sekali saja, beberapa menit)..."

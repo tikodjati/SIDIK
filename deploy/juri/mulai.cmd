@@ -3,7 +3,6 @@ rem SIDIK untuk juri (Windows): satu perintah menyalakan sistem, mengisi data de
 rem menyiapkan bahan uji. Aman dijalankan berulang kali. Klik dua kali berkas ini.
 setlocal
 cd /d "%~dp0"
-if "%SIDIK_PORT%"=="" set SIDIK_PORT=3000
 set COMPOSE=docker compose -f juri/docker-compose.yml
 
 docker --version >nul 2>&1
@@ -23,6 +22,20 @@ if errorlevel 1 (
   echo Perlu Docker Compose v2 ^(perintah "docker compose"^). Perbarui Docker Desktop.
   goto selesai
 )
+
+rem Port: dipakai yang diminta (SIDIK_PORT), atau port stack ini yang sudah jalan, atau yang pertama kosong.
+if not "%SIDIK_PORT%"=="" goto portok
+for /f "tokens=2 delims=:" %%a in ('%COMPOSE% port app 7860 2^>nul') do set SIDIK_PORT=%%a
+if not "%SIDIK_PORT%"=="" goto portok
+for %%p in (3000 3001 3002 3300 3301 8080) do call :cekport %%p
+if "%SIDIK_PORT%"=="" set SIDIK_PORT=3000
+goto portok
+:cekport
+if not "%SIDIK_PORT%"=="" exit /b
+netstat -an | findstr /r /c:":%1 .*LISTENING" >nul
+if errorlevel 1 set SIDIK_PORT=%1
+exit /b
+:portok
 
 if not exist sidik-image.tar.gz goto bangun
 docker image inspect sidik-juri:latest >nul 2>&1
