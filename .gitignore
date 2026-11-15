@@ -89,3 +89,6 @@ docs/*.local.md
 
 # Paket juri rakitan (deploy/make_juri_package.py)
 deploy/_juri_out/
+
+# Diagram arsitektur tim: tetap lokal, tidak masuk repo
+docs/diagram/
