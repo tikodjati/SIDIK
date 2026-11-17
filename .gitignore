@@ -15,6 +15,9 @@ desktop.ini
 *.pem
 *.key
 *.p12
+data/keys/
+# Database SQLite lokal (jalan tanpa Docker)
+*.db
 
 # Python & Virtual Environments
 __pycache__/
@@ -32,8 +35,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/backend/lib/
+/backend/lib64/
 parts/
 sdist/
 var/
@@ -43,11 +46,19 @@ wheels/
 *.egg
 
 # Computer Vision & OCR Temporary Storage
-backend/app/storage/test_leaks/*
-backend/app/storage/watermarked_outputs/*
-!backend/app/storage/test_leaks/.gitkeep
-!backend/app/storage/watermarked_outputs/.gitkeep
-!backend/app/storage/master_templates/
+data/test_leaks/*
+data/watermarked_outputs/*
+!data/test_leaks/.gitkeep
+!data/watermarked_outputs/.gitkeep
+!data/master_templates/
+
+# Video demo (proyek Remotion dan hasil render) tidak masuk git
+/video/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
 
 # Node.js & Next.js
 node_modules/
@@ -68,3 +79,16 @@ yarn-error.log*
 .coverage
 htmlcov/
 .pytest_cache/
+frontend/AGENTS.md
+
+# Hasil rakitan paket Hugging Face Space (dibuat oleh deploy/make_hf_space.py)
+deploy/_hf_space_out/
+
+# Panduan operasional tim (akun, rahasia, langkah push): tetap lokal, tidak masuk repo
+docs/*.local.md
+
+# Paket juri rakitan (deploy/make_juri_package.py)
+deploy/_juri_out/
+
+# Diagram arsitektur tim: tetap lokal, tidak masuk repo
+docs/diagram/

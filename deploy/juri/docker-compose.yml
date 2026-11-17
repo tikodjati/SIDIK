@@ -1,0 +1,49 @@
+# SIDIK untuk juri: satu container (web + API) dan satu PostgreSQL lokal. Tanpa layanan luar, tanpa
+# berkas .env, tanpa rahasia. Dijalankan lewat mulai.cmd / mulai.sh dari akar paket.
+name: sidik-juri
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sidik
+      POSTGRES_PASSWORD: sidik # hanya untuk database lokal paket ini, tidak dibuka ke luar
+      POSTGRES_DB: sidik
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sidik"]
+      interval: 3s
+      retries: 20
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/hf/Dockerfile
+    image: sidik-juri:latest
+    environment:
+      SIDIK_DATABASE_URL: postgresql+psycopg://sidik:sidik@db:5432/sidik
+      SIDIK_SIGNING_KEY_AUTOCREATE: "true" # kunci ledger dibuat sekali di volume data
+      SIDIK_COOKIE_SECURE: "false" # diakses lewat http://localhost
+      SIDIK_DEMO_ALLOW: "1" # izin skenario demo (scripts.demo_juri), hanya di paket ini
+      SIDIK_WORKERS: "2"
+    ports:
+      - "${SIDIK_PORT:-3000}:7860"
+    volumes:
+      - sidikdata:/home/user/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/docs'); u.urlopen('http://127.0.0.1:7860/login')"
+      interval: 4s
+      retries: 60
+      start_period: 15s
+
+volumes:
+  pgdata:
+  sidikdata:

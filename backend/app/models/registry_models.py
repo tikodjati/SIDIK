@@ -1,0 +1,163 @@
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+Klasifikasi = Literal["BIASA", "TERBATAS", "KONFIDENSIAL", "RAHASIA", "SANGAT RAHASIA"]
+CopyStatus = Literal["PENDING", "ISSUED", "REJECTED"]
+
+
+class RecipientIn(BaseModel):
+    nrp: str = Field(min_length=3, max_length=32)
+    nama: str = Field(min_length=1, max_length=128)
+    pangkat: str = Field(min_length=1, max_length=64)
+    jabatan: str = Field(min_length=1, max_length=128)
+    satuan: str = Field(min_length=1, max_length=128)
+
+
+class RecipientOut(RecipientIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
+class DocumentIn(BaseModel):
+    nomor: str = Field(min_length=1, max_length=64)
+    judul: str = Field(min_length=1, max_length=256)
+    klasifikasi: Klasifikasi = "RAHASIA"
+
+
+class DocumentOut(DocumentIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    template: str
+    created_at: datetime
+
+
+class CopyRequest(BaseModel):
+    recipient_id: int
+
+
+class CopyIssued(BaseModel):
+    copy_id: int
+    document_id: int
+    recipient_id: int
+    issued_at: datetime
+    status: CopyStatus = Field(
+        description="PENDING = naskah RAHASIA/SANGAT RAHASIA menunggu persetujuan admin lain"
+    )
+    text: str | None = Field(
+        default=None,
+        description="Naskah dengan penanda Lapis 2 dan 3; kosong selama menunggu persetujuan",
+    )
+    ledger_seq: int
+
+
+class RejectRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=256)
+
+
+class CopyOut(BaseModel):
+    copy_id: int
+    document_id: int
+    document_nomor: str
+    recipient_id: int
+    recipient_nama: str
+    recipient_nrp: str
+    klasifikasi: str
+    issued_at: datetime
+    status: CopyStatus
+    requested_by: str | None
+    approved_by: str | None
+
+
+class CopyText(BaseModel):
+    copy_id: int
+    text: str
+
+
+class IntakeTextRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000, description="Teks bukti kebocoran")
+    case_ref: str | None = Field(default=None, max_length=64, description="Nomor perkara/kasus")
+
+
+class Attribution(BaseModel):
+    copy_id: int
+    recipient: RecipientOut
+    document_nomor: str
+    document_judul: str
+    klasifikasi: str
+    issued_at: datetime
+
+
+class LedgerRef(BaseModel):
+    seq: int
+    entry_hash: str
+
+
+class LayerReading(BaseModel):
+    layer: Literal["L1_SPASI", "L2_KATA", "L3_TOKEN"]
+    observed_bits: int
+    total_bits: int
+    decoded_alone: bool = Field(description="Lapis ini sendiri cukup untuk terdekode")
+
+
+class TokenHit(BaseModel):
+    token_index: int
+    value: str = Field(description="Angka honey-token seperti tercetak di salinan")
+    copy_id: int
+    recipient_nama: str
+    recipient_nrp: str
+    confirmed: bool = Field(
+        description="Salinan pemilik token teratribusi (>= 2 token, atau dikonfirmasi lapis lain)"
+    )
+
+
+class IntakeResult(BaseModel):
+    status: Literal[
+        "IDENTIFIED",
+        "COLLUSION_SUSPECTED",
+        "UNREGISTERED",
+        "CONFLICTING_EVIDENCE",
+        "INSUFFICIENT_FORENSIC_ARTIFACTS",
+    ]
+    observed_bits: int
+    total_bits: int
+    layers: list[LayerReading] = Field(default_factory=list, description="Rincian per lapis")
+    attribution: Attribution | None = Field(
+        default=None, description="Salinan teratribusi (status IDENTIFIED)"
+    )
+    attributions: list[Attribution] = Field(
+        default_factory=list,
+        description="Semua salinan teratribusi; lebih dari satu = COLLUSION_SUSPECTED",
+    )
+    tokens: list[TokenHit] = Field(
+        default_factory=list, description="Honey-token Lapis 3 yang ditemukan di bukti"
+    )
+    official_similarity: float | None = Field(
+        default=None,
+        description="Porsi pasangan kata yang sama dengan naskah resmi (0-1); hanya intake teks. "
+        "Tinggi = salinan/ketik ulang naskah resmi; rendah = parafrase berat atau rekaan",
+    )
+    ledger: LedgerRef
+    note: str
+    aligned_preview: str | None = Field(
+        default=None, description="Foto setelah diluruskan (JPEG base64, kecil); hanya intake foto"
+    )
+
+
+class LedgerEntryOut(BaseModel):
+    seq: int
+    prev_hash: str
+    entry_hash: str
+    body: str
+    signature: str
+    key_id: str
+
+
+class VerifyOut(BaseModel):
+    ok: bool
+    entries: int
+    head_seq: int | None
+    head_hash: str | None
+    bad_seq: int | None = None
+    reason: str | None = None

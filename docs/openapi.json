@@ -1,0 +1,3141 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SIDIK API",
+    "description": "Sistem Identifikasi Dokumen dan Investigasi Kebocoran",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Pesan gagal dan waktu responsnya sama untuk semua sebab, supaya akun tak bisa ditebak.\n\nSaat akun terkunci tak ada entri ledger baru, sehingga serangan menebak sandi tidak bisa\nmembanjiri ledger: paling banyak MAX_FAILED_LOGINS entri per LOCK_MINUTES per akun.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password",
+        "description": "Ganti sandi sendiri dan cabut semua sesi: setelah ini admin tak lagi tahu sandinya,\njadi nama pelaku di ledger benar-benar mewakili pemilik akun.",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_api_v1_users_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "title": "Response List Users Api V1 Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User",
+        "operationId": "create_user_api_v1_users_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "patch": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Set Active",
+        "description": "Aktifkan/nonaktifkan akun. Menonaktifkan langsung mencabut semua sesinya. Admin tak bisa\nmenonaktifkan dirinya sendiri, jadi selalu tersisa minimal satu admin aktif.",
+        "operationId": "set_active_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserActiveUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/layer2/watermark": {
+      "post": {
+        "tags": [
+          "layer2-semantic"
+        ],
+        "summary": "Watermark",
+        "description": "Render naskah demo dengan varian frasa untuk satu salinan (tanpa DB; registri menyusul).",
+        "operationId": "watermark_api_v1_layer2_watermark_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatermarkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatermarkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/layer2/extract": {
+      "post": {
+        "tags": [
+          "layer2-semantic"
+        ],
+        "summary": "Extract",
+        "description": "Baca identitas salinan dari teks bukti; menolak (tidak menebak) bila bukti tak cukup.",
+        "operationId": "extract_api_v1_layer2_extract_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recipients": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Create Recipient",
+        "operationId": "create_recipient_api_v1_recipients_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipientIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Recipients",
+        "operationId": "list_recipients_api_v1_recipients_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientOut"
+                  },
+                  "title": "Response List Recipients Api V1 Recipients Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Create Document",
+        "operationId": "create_document_api_v1_documents_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Documents",
+        "operationId": "list_documents_api_v1_documents_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response List Documents Api V1 Documents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "List Copies",
+        "operationId": "list_copies_api_v1_copies_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CopyOut"
+                  },
+                  "title": "Response List Copies Api V1 Copies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/text": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Copy Text",
+        "description": "Render ulang teks salinan untuk simulasi demo kebocoran. Hanya admin.",
+        "operationId": "copy_text_api_v1_copies__copy_id__text_get",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyText"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/pdf": {
+      "get": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Copy Pdf",
+        "description": "PDF salinan untuk dicetak: naskah dinas dengan pilihan kata khusus penerima (Lapis 2),\npergeseran spasi antar-kata (Lapis 1), dan angka honey-token khusus salinan (Lapis 3).\nPemenggalan baris sama untuk semua salinan. Setiap unduhan dicatat.",
+        "operationId": "copy_pdf_api_v1_copies__copy_id__pdf_get",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{document_id}/copies": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Issue Copy",
+        "description": "Terbitkan satu salinan bertanda untuk satu penerima dan catat di buku besar audit.\n\nNaskah RAHASIA/SANGAT RAHASIA: salinan berstatus PENDING (belum bisa diunduh) sampai disetujui\nadmin lain (four-eyes principle). Pengajuan ulang setelah ditolak diperbolehkan.",
+        "operationId": "issue_copy_api_v1_documents__document_id__copies_post",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/approve": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Approve Copy",
+        "description": "Setujui salinan naskah RAHASIA/SANGAT RAHASIA. Wajib admin selain pengaju (four-eyes).",
+        "operationId": "approve_copy_api_v1_copies__copy_id__approve_post",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/copies/{copy_id}/reject": {
+      "post": {
+        "tags": [
+          "registry"
+        ],
+        "summary": "Reject Copy",
+        "description": "Tolak pengajuan salinan; salinan tak pernah bisa diunduh. Alasan dicatat di ledger.",
+        "operationId": "reject_copy_api_v1_copies__copy_id__reject_post",
+        "parameters": [
+          {
+            "name": "copy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Copy Id"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intake/text": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Text",
+        "description": "Analisis teks bukti (ketik ulang / salinan teks / parafrase) lewat Lapis 2 (pilihan kata)\ndan Lapis 3 (honey-token: angka fiktif khusus salinan).",
+        "operationId": "intake_text_api_v1_intake_text_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intake/photo": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Photo",
+        "description": "Analisis foto halaman PDF salinan: pilihan kata (Lapis 2) dan angka honey-token (Lapis 3)\ndibaca dari bentuknya, lalu pergeseran spasi (Lapis 1) diukur; bukti Lapis 1 dan 2 digabung.\nBila keduanya menunjuk salinan berbeda, hasilnya CONFLICTING_EVIDENCE.\n\nSeluruh halaman sebaiknya terlihat. Prosesnya beberapa detik; foto yang ditolak lebih lama\nkarena semua kandidat pelurusan dicoba.",
+        "operationId": "intake_photo_api_v1_intake_photo_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_photo_api_v1_intake_photo_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/intake/dump": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Intake Dump",
+        "description": "Periksa klaim kebocoran basis data (Lapis 4): cari honey-record (bukti pasti dan sumber\nekspornya), lalu bandingkan identitas dengan data personel dan korpus data publik lama untuk\nmembedakan kebocoran asli dari daur ulang atau rekaan.",
+        "operationId": "intake_dump_api_v1_intake_dump_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_dump_api_v1_intake_dump_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DumpResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "List Entries",
+        "operationId": "list_entries_api_v1_ledger_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "newest_first",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Newest First"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerEntryOut"
+                  },
+                  "title": "Response List Entries Api V1 Ledger Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger/verify": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "Verify",
+        "description": "Verifikasi seluruh rantai (hash, urutan, tanda tangan). Catat `head_hash` secara berkala\ndi luar sistem untuk mendeteksi pemotongan ekor rantai.",
+        "operationId": "verify_api_v1_ledger_verify_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/personnel/summary": {
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Personnel Summary",
+        "operationId": "personnel_summary_api_v1_personnel_summary_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonnelSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/personnel/seed-demo": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Seed Demo",
+        "description": "Isi data personel demo (rekaan) beserta honey-record tertanam. Sekali saja; ditolak bila\ndata personel sudah ada.",
+        "operationId": "seed_demo_api_v1_personnel_seed_demo_post",
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 400,
+              "title": "Count"
+            }
+          },
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeedResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/personnel/exports": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Export Personnel",
+        "description": "Ekspor data personel ke CSV. Setiap ekspor diberi honey-record uniknya sendiri dan dicatat\ndi ledger (akun, satuan, keperluan), sehingga dump yang bocor dapat ditelusuri ke ekspor ini.",
+        "operationId": "export_personnel_api_v1_personnel_exports_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "List Exports",
+        "operationId": "list_exports_api_v1_personnel_exports_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportOut"
+                  },
+                  "title": "Response List Exports Api V1 Personnel Exports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/corpora": {
+      "post": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "Register Corpus",
+        "description": "Daftarkan korpus data publik lama untuk mendeteksi dump daur ulang. Hanya hash NIK dan\nnomor HP yang disimpan; isi berkas dibuang.",
+        "operationId": "register_corpus_api_v1_corpora_post",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_register_corpus_api_v1_corpora_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "personnel"
+        ],
+        "summary": "List Corpora",
+        "operationId": "list_corpora_api_v1_corpora_get",
+        "parameters": [
+          {
+            "name": "sidik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sidik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CorpusOut"
+                  },
+                  "title": "Response List Corpora Api V1 Corpora Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attribution": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "recipient": {
+            "$ref": "#/components/schemas/RecipientOut"
+          },
+          "document_nomor": {
+            "type": "string",
+            "title": "Document Nomor"
+          },
+          "document_judul": {
+            "type": "string",
+            "title": "Document Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "title": "Klasifikasi"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "recipient",
+          "document_nomor",
+          "document_judul",
+          "klasifikasi",
+          "issued_at"
+        ],
+        "title": "Attribution"
+      },
+      "Body_intake_dump_api_v1_intake_dump_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Data dump yang beredar (CSV, SQL, JSON, atau teks)"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_intake_dump_api_v1_intake_dump_post"
+      },
+      "Body_intake_photo_api_v1_intake_photo_post": {
+        "properties": {
+          "photo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Photo",
+            "description": "Foto/scan halaman naskah (JPEG, PNG, atau WebP)"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo"
+        ],
+        "title": "Body_intake_photo_api_v1_intake_photo_post"
+      },
+      "Body_register_corpus_api_v1_corpora_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Data publik/bocoran lama yang sudah dikenal"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 3,
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "label"
+        ],
+        "title": "Body_register_corpus_api_v1_corpora_post"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 10,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
+      },
+      "CopyIssued": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "document_id": {
+            "type": "integer",
+            "title": "Document Id"
+          },
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ISSUED",
+              "REJECTED"
+            ],
+            "title": "Status",
+            "description": "PENDING = naskah RAHASIA/SANGAT RAHASIA menunggu persetujuan admin lain"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Naskah dengan penanda Lapis 2 dan 3; kosong selama menunggu persetujuan"
+          },
+          "ledger_seq": {
+            "type": "integer",
+            "title": "Ledger Seq"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "document_id",
+          "recipient_id",
+          "issued_at",
+          "status",
+          "ledger_seq"
+        ],
+        "title": "CopyIssued"
+      },
+      "CopyOut": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "document_id": {
+            "type": "integer",
+            "title": "Document Id"
+          },
+          "document_nomor": {
+            "type": "string",
+            "title": "Document Nomor"
+          },
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          },
+          "recipient_nama": {
+            "type": "string",
+            "title": "Recipient Nama"
+          },
+          "recipient_nrp": {
+            "type": "string",
+            "title": "Recipient Nrp"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "title": "Klasifikasi"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ISSUED",
+              "REJECTED"
+            ],
+            "title": "Status"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "document_id",
+          "document_nomor",
+          "recipient_id",
+          "recipient_nama",
+          "recipient_nrp",
+          "klasifikasi",
+          "issued_at",
+          "status",
+          "requested_by",
+          "approved_by"
+        ],
+        "title": "CopyOut"
+      },
+      "CopyRequest": {
+        "properties": {
+          "recipient_id": {
+            "type": "integer",
+            "title": "Recipient Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recipient_id"
+        ],
+        "title": "CopyRequest"
+      },
+      "CopyText": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id",
+          "text"
+        ],
+        "title": "CopyText"
+      },
+      "CorpusOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "entries": {
+            "type": "integer",
+            "title": "Entries"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "note",
+          "entries",
+          "created_at"
+        ],
+        "title": "CorpusOut"
+      },
+      "DocumentIn": {
+        "properties": {
+          "nomor": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nomor"
+          },
+          "judul": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "enum": [
+              "BIASA",
+              "TERBATAS",
+              "KONFIDENSIAL",
+              "RAHASIA",
+              "SANGAT RAHASIA"
+            ],
+            "title": "Klasifikasi",
+            "default": "RAHASIA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nomor",
+          "judul"
+        ],
+        "title": "DocumentIn"
+      },
+      "DocumentOut": {
+        "properties": {
+          "nomor": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nomor"
+          },
+          "judul": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Judul"
+          },
+          "klasifikasi": {
+            "type": "string",
+            "enum": [
+              "BIASA",
+              "TERBATAS",
+              "KONFIDENSIAL",
+              "RAHASIA",
+              "SANGAT RAHASIA"
+            ],
+            "title": "Klasifikasi",
+            "default": "RAHASIA"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nomor",
+          "judul",
+          "id",
+          "template",
+          "created_at"
+        ],
+        "title": "DocumentOut"
+      },
+      "DumpResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "AUTHENTIC_LEAK",
+              "UNTRACED_MATCH",
+              "RECYCLED_PUBLIC",
+              "FABRICATED",
+              "NOT_FROM_OUR_DB",
+              "INSUFFICIENT_DATA"
+            ],
+            "title": "Status"
+          },
+          "identifiers": {
+            "$ref": "#/components/schemas/IdentifierCounts"
+          },
+          "personnel_ratio": {
+            "type": "number",
+            "title": "Personnel Ratio",
+            "description": "Porsi identitas dump yang ada di data personel"
+          },
+          "corpus_ratio": {
+            "type": "number",
+            "title": "Corpus Ratio",
+            "description": "Porsi identitas yang ada di korpus data publik"
+          },
+          "corpus_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpus Label"
+          },
+          "invalid_ratio": {
+            "type": "number",
+            "title": "Invalid Ratio",
+            "description": "Porsi NIK berformat tidak valid"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/DumpSource"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/LedgerRef"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "identifiers",
+          "personnel_ratio",
+          "corpus_ratio",
+          "invalid_ratio",
+          "ledger",
+          "note"
+        ],
+        "title": "DumpResult"
+      },
+      "DumpSource": {
+        "properties": {
+          "export": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ekspor asal honey-record; null = honey-record tertanam di basis data"
+          },
+          "matched_rows": {
+            "type": "integer",
+            "title": "Matched Rows"
+          },
+          "proven": {
+            "type": "boolean",
+            "title": "Proven",
+            "description": "Bukti cukup (>= 2 baris, atau 1 baris cocok di >= 2 kolom)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "export",
+          "matched_rows",
+          "proven"
+        ],
+        "title": "DumpSource"
+      },
+      "ExportOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "satuan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satuan"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "satuan",
+          "purpose",
+          "row_count",
+          "created_at"
+        ],
+        "title": "ExportOut"
+      },
+      "ExportRequest": {
+        "properties": {
+          "satuan": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satuan",
+            "description": "Kosong = semua satuan"
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 3,
+            "title": "Purpose",
+            "description": "Keperluan ekspor (dicatat)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purpose"
+        ],
+        "title": "ExportRequest"
+      },
+      "ExtractRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Teks bukti (ketikan ulang)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ExtractRequest"
+      },
+      "ExtractResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "IDENTIFIED",
+              "INSUFFICIENT_FORENSIC_ARTIFACTS"
+            ],
+            "title": "Status"
+          },
+          "copy_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Copy Id"
+          },
+          "flags": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flags"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "observed_bits",
+          "total_bits"
+        ],
+        "title": "ExtractResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IdentifierCounts": {
+        "properties": {
+          "nik": {
+            "type": "integer",
+            "title": "Nik"
+          },
+          "no_hp": {
+            "type": "integer",
+            "title": "No Hp"
+          },
+          "nrp": {
+            "type": "integer",
+            "title": "Nrp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nik",
+          "no_hp",
+          "nrp"
+        ],
+        "title": "IdentifierCounts"
+      },
+      "IntakeResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "IDENTIFIED",
+              "COLLUSION_SUSPECTED",
+              "UNREGISTERED",
+              "CONFLICTING_EVIDENCE",
+              "INSUFFICIENT_FORENSIC_ARTIFACTS"
+            ],
+            "title": "Status"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerReading"
+            },
+            "type": "array",
+            "title": "Layers",
+            "description": "Rincian per lapis"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Attribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Salinan teratribusi (status IDENTIFIED)"
+          },
+          "attributions": {
+            "items": {
+              "$ref": "#/components/schemas/Attribution"
+            },
+            "type": "array",
+            "title": "Attributions",
+            "description": "Semua salinan teratribusi; lebih dari satu = COLLUSION_SUSPECTED"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenHit"
+            },
+            "type": "array",
+            "title": "Tokens",
+            "description": "Honey-token Lapis 3 yang ditemukan di bukti"
+          },
+          "official_similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Similarity",
+            "description": "Porsi pasangan kata yang sama dengan naskah resmi (0-1); hanya intake teks. Tinggi = salinan/ketik ulang naskah resmi; rendah = parafrase berat atau rekaan"
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/LedgerRef"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "aligned_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aligned Preview",
+            "description": "Foto setelah diluruskan (JPEG base64, kecil); hanya intake foto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "observed_bits",
+          "total_bits",
+          "ledger",
+          "note"
+        ],
+        "title": "IntakeResult"
+      },
+      "IntakeTextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 200000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Teks bukti kebocoran"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref",
+            "description": "Nomor perkara/kasus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "IntakeTextRequest"
+      },
+      "LayerReading": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": [
+              "L1_SPASI",
+              "L2_KATA",
+              "L3_TOKEN"
+            ],
+            "title": "Layer"
+          },
+          "observed_bits": {
+            "type": "integer",
+            "title": "Observed Bits"
+          },
+          "total_bits": {
+            "type": "integer",
+            "title": "Total Bits"
+          },
+          "decoded_alone": {
+            "type": "boolean",
+            "title": "Decoded Alone",
+            "description": "Lapis ini sendiri cukup untuk terdekode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "observed_bits",
+          "total_bits",
+          "decoded_alone"
+        ],
+        "title": "LayerReading"
+      },
+      "LedgerEntryOut": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "prev_hash": {
+            "type": "string",
+            "title": "Prev Hash"
+          },
+          "entry_hash": {
+            "type": "string",
+            "title": "Entry Hash"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          },
+          "key_id": {
+            "type": "string",
+            "title": "Key Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seq",
+          "prev_hash",
+          "entry_hash",
+          "body",
+          "signature",
+          "key_id"
+        ],
+        "title": "LedgerEntryOut"
+      },
+      "LedgerRef": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "entry_hash": {
+            "type": "string",
+            "title": "Entry Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seq",
+          "entry_hash"
+        ],
+        "title": "LedgerRef"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "PersonnelSummary": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "by_satuan": {
+            "items": {
+              "$ref": "#/components/schemas/SatuanCount"
+            },
+            "type": "array",
+            "title": "By Satuan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "by_satuan"
+        ],
+        "title": "PersonnelSummary"
+      },
+      "RecipientIn": {
+        "properties": {
+          "nrp": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Nrp"
+          },
+          "nama": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Nama"
+          },
+          "pangkat": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pangkat"
+          },
+          "jabatan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Jabatan"
+          },
+          "satuan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Satuan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nrp",
+          "nama",
+          "pangkat",
+          "jabatan",
+          "satuan"
+        ],
+        "title": "RecipientIn"
+      },
+      "RecipientOut": {
+        "properties": {
+          "nrp": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 3,
+            "title": "Nrp"
+          },
+          "nama": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Nama"
+          },
+          "pangkat": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pangkat"
+          },
+          "jabatan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Jabatan"
+          },
+          "satuan": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Satuan"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nrp",
+          "nama",
+          "pangkat",
+          "jabatan",
+          "satuan",
+          "id"
+        ],
+        "title": "RecipientOut"
+      },
+      "RejectRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "RejectRequest"
+      },
+      "SatuanCount": {
+        "properties": {
+          "satuan": {
+            "type": "string",
+            "title": "Satuan"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "satuan",
+          "count"
+        ],
+        "title": "SatuanCount"
+      },
+      "SeedResult": {
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "honey_records": {
+            "type": "integer",
+            "title": "Honey Records",
+            "description": "Honey-record tertanam di antara baris personel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "honey_records"
+        ],
+        "title": "SeedResult"
+      },
+      "TokenHit": {
+        "properties": {
+          "token_index": {
+            "type": "integer",
+            "title": "Token Index"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "Angka honey-token seperti tercetak di salinan"
+          },
+          "copy_id": {
+            "type": "integer",
+            "title": "Copy Id"
+          },
+          "recipient_nama": {
+            "type": "string",
+            "title": "Recipient Nama"
+          },
+          "recipient_nrp": {
+            "type": "string",
+            "title": "Recipient Nrp"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "description": "Salinan pemilik token teratribusi (>= 2 token, atau dikonfirmasi lapis lain)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token_index",
+          "value",
+          "copy_id",
+          "recipient_nama",
+          "recipient_nrp",
+          "confirmed"
+        ],
+        "title": "TokenHit"
+      },
+      "UserActiveUpdate": {
+        "properties": {
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_active"
+        ],
+        "title": "UserActiveUpdate"
+      },
+      "UserCreate": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9._-]{3,32}$",
+            "title": "Username"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "distributor",
+              "investigator"
+            ],
+            "title": "Role"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 10,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "full_name",
+          "role",
+          "password"
+        ],
+        "title": "UserCreate"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "distributor",
+              "investigator"
+            ],
+            "title": "Role"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "full_name",
+          "role",
+          "is_active"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerifyOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "entries": {
+            "type": "integer",
+            "title": "Entries"
+          },
+          "head_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Seq"
+          },
+          "head_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Hash"
+          },
+          "bad_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bad Seq"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "entries",
+          "head_seq",
+          "head_hash"
+        ],
+        "title": "VerifyOut"
+      },
+      "WatermarkRequest": {
+        "properties": {
+          "copy_id": {
+            "type": "integer",
+            "exclusiveMaximum": 4294967296.0,
+            "minimum": 0.0,
+            "title": "Copy Id",
+            "description": "ID salinan (NRP/penerima dicari lewat DB)"
+          },
+          "flags": {
+            "type": "integer",
+            "exclusiveMaximum": 16.0,
+            "minimum": 0.0,
+            "title": "Flags",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "copy_id"
+        ],
+        "title": "WatermarkRequest"
+      },
+      "WatermarkResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "slots": {
+            "type": "integer",
+            "title": "Slots"
+          },
+          "capacity_bits": {
+            "type": "integer",
+            "title": "Capacity Bits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "slots",
+          "capacity_bits"
+        ],
+        "title": "WatermarkResponse"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+.git
+video
+video_demo
+bahan_uji
+sidik-image.tar.gz
+**/.env*
+**/node_modules
+**/.next
+**/__pycache__
+backend/.venv
+backend/tests
+docs
+Documents
+deploy/_hf_space_out
+deploy/_juri_out
